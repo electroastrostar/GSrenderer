@@ -19,12 +19,13 @@ Tracking file per SPLATCAST_PLAN.md §7.1. Current phase: **Phase 0 — Project 
 - Phase 0, Task 4 — Logging: `gsr::log` (spdlog) with per-subsystem levels and frame-stamped
   format `[frame N][t_mono_us T]`; 6 unit tests; app stub now logs through it.
 
+- Phase 0 acceptance — fresh out-of-tree Release configure/build: 0 warnings/errors;
+  8/8 tests pass in Debug and Release; hello-world test green. PR opened.
+
 ## In Progress
 
-- **Phase 0 acceptance check** — clean from-scratch `cmake --build` (Debug + Release), all
-  tests pass; then open the Phase 0 PR with acceptance criteria checked off.
-  - Exact next step: fresh out-of-tree configure+build+ctest, then create PR.
+- (nothing — Phase 0 complete, awaiting PR review)
 
 ## Next
 
-- Phase 1 — Asset Loading with Full SH (new branch after Phase 0 PR).
+- Phase 1 — Asset Loading with Full SH (new branch after Phase 0 PR merges).
