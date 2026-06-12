@@ -13,14 +13,16 @@ Tracking file per SPLATCAST_PLAN.md §7.1. Current phase: **Phase 0 — Project 
 - Phase 0, Task 5 — Catch2 v3 wired into CMake via FetchContent + `catch_discover_tests`;
   hello-world test passing (done alongside Task 2 — the test target was part of the scaffold).
 
+- Phase 0, Task 3 — `docs/architecture.md` skeleton (data-flow diagram, coordinate-space
+  table, transform inventory, subsystem map) + `docs/decisions/` ADR template.
+
 ## In Progress
 
-- **Phase 0, Task 3 — `docs/architecture.md` skeleton** with data-flow diagram
-  (tracker → pose filter → frustum → render → output).
-  - Exact next step: write `docs/architecture.md` + `docs/decisions/README.md`; commit, push.
+- **Phase 0, Task 4 — Logging**: spdlog wrapper with per-subsystem levels and frame-stamped
+  format (`[frame N][t_mono_us T]`), plus unit tests.
+  - Exact next step: write `src/core/log.{hpp,cpp}` with custom spdlog pattern flag, frame
+    counter, `tests/test_log.cpp`; wire app stub to it; build, test, commit, push.
 
 ## Next
 
-- Phase 0, Task 4 — Logging (spdlog) with per-subsystem levels and frame-stamped
-  format (`[frame N][t_mono_us]`), plus unit tests.
 - Phase 0 acceptance check — clean `cmake --build` (Debug + Release), tests pass; open PR.
