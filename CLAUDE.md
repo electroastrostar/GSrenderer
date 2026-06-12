@@ -75,6 +75,11 @@ advances the frame counter via `gsr::log::advance_frame()`. Per-subsystem levels
 
 ## Testing
 
+- **Operator verification per phase:** every phase PR must include
+  `docs/verification/phase-N.md` — exact commands the operator runs on the real machines
+  (A6000 dev box, Windows render nodes), with expected output and a PASS/FAIL checklist.
+  Container/CI builds don't count as the dev-machine acceptance check; the PR merges only
+  after the operator's checklist is green.
 - Framework: Catch2 v3, discovered via CTest (`catch_discover_tests`).
 - Test files live in `tests/`, named `test_<unit>.cpp`.
 - Hardware-dependent paths (tracker, NIC) are tested against simulators/mocks

@@ -22,9 +22,13 @@ Tracking file per SPLATCAST_PLAN.md §7.1. Current phase: **Phase 0 — Project 
 - Phase 0 acceptance — fresh out-of-tree Release configure/build: 0 warnings/errors;
   8/8 tests pass in Debug and Release; hello-world test green. PR opened.
 
+- Phase 0 — added `docs/verification/phase-0.md` (operator test steps for the A6000 +
+  Windows machines) and made per-phase verification docs a standing agreement in `CLAUDE.md`.
+
 ## In Progress
 
-- (nothing — Phase 0 complete, awaiting PR review)
+- (nothing — Phase 0 complete; awaiting **operator verification on dev machines** per
+  `docs/verification/phase-0.md`, then PR merge)
 
 ## Next
 
