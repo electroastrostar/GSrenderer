@@ -1,0 +1,23 @@
+# Build directories
+build/
+build-*/
+out/
+cmake-build-*/
+
+# IDE / editor
+.vscode/
+.idea/
+.cache/
+compile_commands.json
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Large splat assets never go in git (small test fixtures under assets/ are OK)
+*.ply
+*.splat
+*.spz
+!assets/**/*.ply
+!assets/**/*.splat
+!assets/**/*.spz
