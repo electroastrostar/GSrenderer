@@ -1,4 +1,5 @@
 add_executable(gsr_tests
+  test_log.cpp
   test_version.cpp
 )
 

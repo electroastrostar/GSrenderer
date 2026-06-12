@@ -1,10 +1,12 @@
-#include <cstdio>
-
+#include "core/log.hpp"
 #include "core/version.hpp"
 
 int main() {
-  std::printf("splatcast %.*s (CUDA: %s)\n",
-              static_cast<int>(gsr::core::version().size()), gsr::core::version().data(),
-              gsr::core::cuda_enabled() ? "enabled" : "disabled");
+  gsr::log::init();
+  auto log = gsr::log::get("app");
+  log->info("splatcast {} starting (CUDA: {})", gsr::core::version(),
+            gsr::core::cuda_enabled() ? "enabled" : "disabled");
+  log->info("scaffolding only — nothing to render yet (Phase 0)");
+  gsr::log::shutdown();
   return 0;
 }

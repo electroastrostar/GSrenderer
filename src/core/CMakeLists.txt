@@ -1,4 +1,5 @@
 add_library(gsr_core STATIC
+  log.cpp
   version.cpp
 )
 
