@@ -49,6 +49,7 @@ include(cmake/Dependencies.cmake)
 add_subdirectory(src/core)
 add_subdirectory(src/loader)
 add_subdirectory(src/app)
+add_subdirectory(tools/asset_inspector)
 
 if(GSR_BUILD_TESTS)
   enable_testing()

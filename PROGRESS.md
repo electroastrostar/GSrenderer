@@ -17,12 +17,15 @@ Phase 0 PR #1 merged — session tooling pins the branch name; PR title carries 
 - Phase 1, Task 3 — `docs/splat-memory-layout.md`: SoA arrays, channel-major `sh_rest`
   ordering, color reconstruction formula, per-splat byte costs, intentional omissions.
 
+- Phase 1, Task 4 — `tools/asset_inspector` CLI (count, SH degree, bounds, memory);
+  deterministic fixture `assets/fixtures/cube_deg3.ply` (+ generator script) pinned to its
+  hand-derived values by `tests/test_fixture_asset.cpp`.
+
 ## In Progress
 
-- **Phase 1, Task 4 — `tools/asset_inspector`**: CLI printing splat count, SH degree,
-  bounding box, memory footprint; tiny committed fixture asset with known values.
-  - Exact next step: write `tools/asset_inspector/main.cpp` + CMake, generate
-    `assets/fixtures/` test PLY via script, verify output, commit, push.
+- **Phase 1 wrap-up** — decide on Task 5 stretch (.spz/.splat: deferring, will note in PR),
+  write `docs/verification/phase-1.md`, final clean-build acceptance check, open PR.
+  - Exact next step: write verification doc, fresh out-of-tree build+test, create PR.
 
 ## Next
 - Phase 1, Task 5 (stretch, optional) — `.spz` / `.splat` (antimatter15) support behind the
