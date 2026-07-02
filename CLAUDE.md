@@ -80,6 +80,16 @@ advances the frame counter via `gsr::log::advance_frame()`. Per-subsystem levels
   (A6000 dev box, Windows render nodes), with expected output and a PASS/FAIL checklist.
   Container/CI builds don't count as the dev-machine acceptance check; the PR merges only
   after the operator's checklist is green.
+  **Write these docs for an operator standing at the machine, not a developer.** Required
+  in every one: (a) one-time setup (installs, cloning) with download links; (b) for every
+  command block, state **which machine**, **which terminal application** (e.g. "x64 Native
+  Tools Command Prompt for VS 2022", never just "a shell"), and **which folder** the
+  operator must be in; (c) copy-pasteable commands — separate Windows and Linux blocks;
+  (d) the literal expected output marked ✅ PASS and the failure signs marked ❌ FAIL, with
+  common causes; (e) a final section explaining how to record results: click the checkboxes
+  in the PR description on GitHub (or `⋯ → Edit`, change `- [ ]` to `- [x]`), and paste
+  failing terminal output as a PR comment. Use `docs/verification/phase-0.md` as the
+  template.
 - Framework: Catch2 v3, discovered via CTest (`catch_discover_tests`).
 - Test files live in `tests/`, named `test_<unit>.cpp`.
 - Hardware-dependent paths (tracker, NIC) are tested against simulators/mocks
