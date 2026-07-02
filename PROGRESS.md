@@ -14,15 +14,17 @@ Phase 0 PR #1 merged — session tooling pins the branch name; PR title carries 
   arbitrary property order; 10 loader tests incl. hand-checked fixture + malformed-file
   rejection. SoA packing already done as part of the loader (`SplatData`).
 
+- Phase 1, Task 3 — `docs/splat-memory-layout.md`: SoA arrays, channel-major `sh_rest`
+  ordering, color reconstruction formula, per-splat byte costs, intentional omissions.
+
 ## In Progress
 
-- **Phase 1, Task 3 — document the SoA memory layout** in `docs/splat-memory-layout.md`
-  (the packing itself shipped with Tasks 1+2).
-  - Exact next step: write the doc, update architecture.md subsystem note, commit, push.
+- **Phase 1, Task 4 — `tools/asset_inspector`**: CLI printing splat count, SH degree,
+  bounding box, memory footprint; tiny committed fixture asset with known values.
+  - Exact next step: write `tools/asset_inspector/main.cpp` + CMake, generate
+    `assets/fixtures/` test PLY via script, verify output, commit, push.
 
 ## Next
-- Phase 1, Task 4 — `tools/asset_inspector`: CLI printing splat count, SH degree, bounding
-  box, memory footprint estimate; tiny committed fixture asset for verification.
 - Phase 1, Task 5 (stretch, optional) — `.spz` / `.splat` (antimatter15) support behind the
   same loader interface. Will defer unless time allows.
 - Phase 1 acceptance — inspector output matches known values for a reference asset; loader
