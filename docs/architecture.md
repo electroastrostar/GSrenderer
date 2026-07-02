@@ -58,7 +58,8 @@ hand-checked unit test (see `CLAUDE.md`). To be populated as transforms land:
 ## 4. Subsystems
 
 - **core/** — math, camera, frustum, timing, logging. *(logging: Phase 0; rest TBD)*
-- **loader/** — PLY/SPZ/splat parsing, SH degree detection, SoA GPU buffer layout. *(TBD Phase 1)*
+- **loader/** — binary PLY parsing (INRIA 3DGS), SH degree detection 0–3, SoA buffers with
+  load-time activations. Layout: `docs/splat-memory-layout.md`. *(Phase 1; .spz/.splat TBD)*
 - **renderer/** — CUDA pipeline: frustum cull → 2D covariance projection → 16×16 tile binning
   → per-tile radix sort by depth → front-to-back alpha blend. SH evaluated per splat per frame
   from the **physical camera position**. *(TBD Phase 2)*
