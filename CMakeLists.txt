@@ -47,6 +47,7 @@ endif()
 include(cmake/Dependencies.cmake)
 
 add_subdirectory(src/core)
+add_subdirectory(src/loader)
 add_subdirectory(src/app)
 
 if(GSR_BUILD_TESTS)
