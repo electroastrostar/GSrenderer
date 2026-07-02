@@ -1,4 +1,5 @@
 add_executable(gsr_tests
+  test_camera.cpp
   test_fixture_asset.cpp
   test_log.cpp
   test_ply_loader.cpp

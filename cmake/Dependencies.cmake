@@ -7,6 +7,13 @@ FetchContent_Declare(spdlog
   GIT_SHALLOW    TRUE)
 FetchContent_MakeAvailable(spdlog)
 
+# Math (host + CUDA device), see docs/decisions/0001-glm-math-library.md
+FetchContent_Declare(glm
+  GIT_REPOSITORY https://github.com/g-truc/glm.git
+  GIT_TAG        1.0.1
+  GIT_SHALLOW    TRUE)
+FetchContent_MakeAvailable(glm)
+
 if(GSR_BUILD_TESTS)
   FetchContent_Declare(Catch2
     GIT_REPOSITORY https://github.com/catchorg/Catch2.git

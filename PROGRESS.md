@@ -15,18 +15,18 @@ verification — expect an iteration loop on the PR.
 - **Phase 1 — complete.** Merged in PR #2 (PLY loader w/ full SH, SoA buffers,
   asset_inspector). Stretch task (.spz/.splat) deferred.
 
+- Phase 2, groundwork — GLM math dependency (ADR 0001); `gsr::core` camera model
+  (view_from_world, off-axis-capable clip_from_view from pixel intrinsics) with 9
+  hand-checked unit tests. 28/28 tests green.
+
 ## In Progress
 
-- **Phase 2, groundwork — math dependency + camera model.** GLM (pinned FetchContent) as
-  host/device math library (ADR 0001), `gsr::core` camera: view matrix from pose,
-  perspective projection from intrinsics, hand-checked unit tests.
-  - Exact next step: ADR 0001 + GLM in cmake/Dependencies.cmake + `src/core/camera.{hpp,cpp}`
-    + tests; build, test, commit, push.
+- **Phase 2, Task 2 — SH evaluation** (degrees 0–3) as a host/device-shared header with
+  CPU unit tests against hand-computed values.
+  - Exact next step: `src/renderer/sh.hpp` + `tests/test_sh.cpp`; build, test, commit, push.
 
 ## Next
 
-- Phase 2, Task 2 — SH evaluation (degrees 0–3) as host/device-shared header, CPU unit
-  tests against hand-computed values (view dir = camera position → splat center).
 - Phase 2, Task 1a — covariance math: quat+scale → 3D covariance; EWA projection to 2D
   conic; host/device-shared, CPU unit tests.
 - Phase 2, Task 1b — CUDA pipeline (`src/renderer/`): preprocess (cull + project) →
