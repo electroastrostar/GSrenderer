@@ -59,6 +59,7 @@ add_subdirectory(src/tracking)
 add_subdirectory(src/renderer)
 add_subdirectory(src/app)
 add_subdirectory(tools/asset_inspector)
+add_subdirectory(tools/freed_simulator)
 
 if(GSR_BUILD_TESTS)
   enable_testing()

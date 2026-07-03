@@ -25,16 +25,18 @@ UDP and can act as a handheld tracker against the same listener port.
   wrapper, background receive thread, stats (ok/rejected/rate), latest-pose mailbox +
   callback, UdpSender for simulator/tests; 3 loopback tests. 61/61 green.
 
+- Phase 3, Task 3 — `tools/freed_simulator`: static/orbit/handheld profiles (layered-
+  sinusoid handheld jitter), --port/--rate/--radius/--height/--period/--duration; paced
+  send loop. Smoke-tested against an independent python checksum validator (60/60 ok).
+
 ## In Progress
 
-- **Phase 3, Task 3 — `tools/freed_simulator`**: static / orbit / handheld-noise
-  profiles, configurable port + rate, shares the codec + UdpSender.
-  - Exact next step: simulator main + CMake; smoke-test against listener; commit.
+- **Phase 3, Task 4 — pose filter** (`src/tracking/pose_predictor.*`): timestamped ring
+  buffer + linear-velocity extrapolation with configurable latency offset (ms).
+  - Exact next step: implement + hand-computed fixture tests; commit.
 
 ## Next
 
-- Phase 3, Task 4 — pose filter: timestamped ring buffer + linear-velocity prediction
-  with configurable latency offset (ms); unit tests with hand-computed fixtures.
 - Phase 3, Task 5 — lens model: zoom/focus raw → focal length via CSV table
   (interpolated), fixed-intrinsics fallback; unit tests.
 - Phase 3, Task 6 — `render_from_freed` convention transform in `src/core/` (+
