@@ -3,6 +3,7 @@ add_executable(gsr_tests
   test_fixture_asset.cpp
   test_log.cpp
   test_ply_loader.cpp
+  test_sh.cpp
   test_splat_data.cpp
   test_version.cpp
 )

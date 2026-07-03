@@ -19,16 +19,17 @@ verification — expect an iteration loop on the PR.
   (view_from_world, off-axis-capable clip_from_view from pixel intrinsics) with 9
   hand-checked unit tests. 28/28 tests green.
 
+- Phase 2, Task 2 — SH evaluation degrees 0–3 (`src/renderer/sh.hpp`, host/device-shared)
+  with 6 hand-computed CPU tests incl. channel-major layout + view-dependence property.
+
 ## In Progress
 
-- **Phase 2, Task 2 — SH evaluation** (degrees 0–3) as a host/device-shared header with
-  CPU unit tests against hand-computed values.
-  - Exact next step: `src/renderer/sh.hpp` + `tests/test_sh.cpp`; build, test, commit, push.
+- **Phase 2, Task 1a — covariance math**: quat+scale → 3D covariance; EWA projection to
+  2D conic. Host/device-shared header, hand-checked CPU tests.
+  - Exact next step: `src/renderer/covariance.hpp` + `tests/test_covariance.cpp`.
 
 ## Next
 
-- Phase 2, Task 1a — covariance math: quat+scale → 3D covariance; EWA projection to 2D
-  conic; host/device-shared, CPU unit tests.
 - Phase 2, Task 1b — CUDA pipeline (`src/renderer/`): preprocess (cull + project) →
   16×16 tile binning → CUB radix sort on [tile|depth] keys → front-to-back blend kernel.
 - Phase 2, Task 3 — GLFW preview window + CUDA→GL interop (PBO), free-fly WASD camera.
