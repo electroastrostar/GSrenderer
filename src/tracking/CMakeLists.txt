@@ -1,5 +1,6 @@
 add_library(gsr_tracking STATIC
   freed.cpp
+  pose_predictor.cpp
   udp_listener.cpp
 )
 

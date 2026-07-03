@@ -6,6 +6,7 @@ add_executable(gsr_tests
   test_freed.cpp
   test_log.cpp
   test_ply_loader.cpp
+  test_pose_predictor.cpp
   test_sh.cpp
   test_splat_data.cpp
   test_transforms.cpp

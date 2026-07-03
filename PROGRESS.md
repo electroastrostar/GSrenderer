@@ -29,16 +29,19 @@ UDP and can act as a handheld tracker against the same listener port.
   sinusoid handheld jitter), --port/--rate/--radius/--height/--period/--duration; paced
   send loop. Smoke-tested against an independent python checksum validator (60/60 ok).
 
+- Phase 3, Task 4 — pose predictor (`src/tracking/pose_predictor.*`): timestamped ring
+  buffer, linear extrapolation with angle unwrapping (±180° pan crossings), stale-data
+  freeze horizon; latency offset applied at the query site. 7 hand-computed tests
+  incl. the "latency offset shifts the prediction" acceptance property. 68/68 green.
+
 ## In Progress
 
-- **Phase 3, Task 4 — pose filter** (`src/tracking/pose_predictor.*`): timestamped ring
-  buffer + linear-velocity extrapolation with configurable latency offset (ms).
-  - Exact next step: implement + hand-computed fixture tests; commit.
+- **Phase 3, Task 5 — lens model** (`src/tracking/lens_table.*`): zoom raw → focal
+  length via interpolated CSV table, fixed-intrinsics fallback; unit tests.
+  - Exact next step: implement + tests + example CSV in configs/; commit.
 
 ## Next
 
-- Phase 3, Task 5 — lens model: zoom/focus raw → focal length via CSV table
-  (interpolated), fixed-intrinsics fallback; unit tests.
 - Phase 3, Task 6 — `render_from_freed` convention transform in `src/core/` (+
   architecture.md coordinate table row + hand-checked tests).
 - Phase 3, integration — preview gains `--freed-port` tracked-camera mode +
