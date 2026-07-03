@@ -7,6 +7,7 @@ add_executable(gsr_tests
   test_ply_loader.cpp
   test_sh.cpp
   test_splat_data.cpp
+  test_transforms.cpp
   test_version.cpp
 )
 

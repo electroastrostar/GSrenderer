@@ -127,6 +127,10 @@ The camera spawns framing the densest 90% of the scene (far-away background/sky 
 ignored for framing), and fly speed auto-scales to the scene — if movement still feels too
 slow or fast, **scroll the mouse wheel** to adjust it (`spd` in the title bar).
 
+The scene must appear **right side up**: COLMAP-trained assets are y-down and the preview
+applies the same default flip SuperSplat does. If a particular asset was exported already
+y-up and renders inverted, add `--no-flip` to the command.
+
 Then open **the same `.ply`** in SuperSplat (<https://superspl.at/editor>, drag the file
 in) and navigate both to roughly the same viewpoint.
 

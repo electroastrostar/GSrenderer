@@ -23,6 +23,7 @@ void print_usage() {
                "  --fov DEG       vertical field of view in degrees (default 60)\n"
                "  --sh-clamp N    clamp SH evaluation degree 0..3 (default: asset degree)\n"
                "  --vsync         lock preview to the display refresh (default off)\n"
+               "  --no-flip       don't apply the COLMAP y-down -> y-up scene flip\n"
                "Runs the Phase 2 debug preview (requires a CUDA build).\n");
 }
 
@@ -33,6 +34,7 @@ struct CliOptions {
   float fov_deg = 60.0f;  // degrees on the CLI (I/O boundary); radians internally
   int sh_clamp = -1;
   bool vsync = false;
+  bool flip_scene = true;
 };
 
 bool parse_cli(int argc, char** argv, CliOptions* out) {
@@ -64,6 +66,8 @@ bool parse_cli(int argc, char** argv, CliOptions* out) {
       out->sh_clamp = std::stoi(v);
     } else if (std::strcmp(argv[i], "--vsync") == 0) {
       out->vsync = true;
+    } else if (std::strcmp(argv[i], "--no-flip") == 0) {
+      out->flip_scene = false;
     } else {
       std::fprintf(stderr, "error: unknown option '%s'\n", argv[i]);
       return false;
@@ -98,6 +102,7 @@ int main(int argc, char** argv) {
     options.fov_y_rad = glm::radians(cli.fov_deg);
     options.sh_degree_clamp = cli.sh_clamp;
     options.vsync = cli.vsync;
+    options.flip_scene = cli.flip_scene;
     const int code = gsr::app::run_preview(data, options);
     gsr::log::shutdown();
     return code;

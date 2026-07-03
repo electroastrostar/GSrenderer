@@ -1,6 +1,7 @@
 add_library(gsr_core STATIC
   camera.cpp
   log.cpp
+  transforms.cpp
   version.cpp
 )
 

@@ -43,9 +43,16 @@ hidden "[gpu]" tests + visual check during operator verification.
   tested), camera framing + fly speed derived from robust radius, scroll-wheel speed
   control with `spd` HUD readout. 46/46 tests, CUDA build clean.
 
+- Phase 2, PR #3 iteration 2 — operator report: scene renders upside down (framing now
+  OK). Cause: COLMAP assets are y-down vs our y-up render world; fixture was symmetric so
+  invisible in §5a. Fix per convention rules: named `world_from_asset`/`asset_from_world`
+  (180° about X, involution) in core/transforms with hand-checked tests; preview composes
+  view_from_asset + SH camera position in asset space; `--no-flip` escape hatch;
+  architecture.md coordinate table + transform inventory updated. 49/49 tests.
+
 ## In Progress
 
-- (Phase 2 PR #3 awaiting operator re-verification of §5b + §6 after the framing fix.)
+- (Phase 2 PR #3 awaiting operator re-verification of §5b + §6 after the orientation fix.)
 
 ## Next
 

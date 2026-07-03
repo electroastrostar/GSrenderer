@@ -16,6 +16,10 @@ struct PreviewOptions {
   float fov_y_rad = 0.0f;  // 0 = default 60 degrees
   int sh_degree_clamp = -1;
   bool vsync = false;  // keep off for perf measurement (plan Phase 2 perf gate)
+  // COLMAP-convention assets are y-down; by default the scene is viewed through the
+  // world_from_asset flip so it appears upright (same default as SuperSplat).
+  // --no-flip disables this for assets exported already y-up.
+  bool flip_scene = true;
 };
 
 // Blocks until the window closes. Returns process exit code (0 = clean run).

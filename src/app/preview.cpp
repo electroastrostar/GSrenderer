@@ -2,6 +2,7 @@
 
 #include "core/camera.hpp"
 #include "core/log.hpp"
+#include "core/transforms.hpp"
 #include "loader/splat_data.hpp"
 
 #include <GLFW/glfw3.h>
@@ -81,10 +82,12 @@ struct FlyCamera {
 // and raw bounds would park the camera "infinitely far" with movement that feels dead
 // (PR #3 operator report). Fly speed also derives from this radius: SfM scene scale is
 // arbitrary, so a fixed m/s is meaningless.
-FlyCamera initial_camera(const loader::SplatData& data) {
+FlyCamera initial_camera(const loader::SplatData& data, bool flip_scene) {
   const auto b = gsr::loader::compute_robust_bounds(data);
-  const glm::vec3 center{(b.min[0] + b.max[0]) * 0.5f, (b.min[1] + b.max[1]) * 0.5f,
-                         (b.min[2] + b.max[2]) * 0.5f};
+  const glm::vec3 center_asset{(b.min[0] + b.max[0]) * 0.5f, (b.min[1] + b.max[1]) * 0.5f,
+                               (b.min[2] + b.max[2]) * 0.5f};
+  const glm::vec3 center =
+      flip_scene ? gsr::core::world_from_asset(center_asset) : center_asset;
   const glm::vec3 extent{b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2]};
   const float radius = 0.5f * std::max(0.5f, glm::length(extent));
   FlyCamera cam;
@@ -185,7 +188,10 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
     throw std::runtime_error("preview: CUDA/GL interop registration failed");
   }
 
-  FlyCamera cam = initial_camera(data);
+  // COLMAP-convention assets are y-down; the fly camera lives in y-up render world and
+  // the renderer receives the composed asset-space view (named transforms, CLAUDE.md).
+  const bool flip_scene = options.flip_scene;
+  FlyCamera cam = initial_camera(data, flip_scene);
   glfwSetWindowUserPointer(window, &cam);
   glfwSetScrollCallback(window, scroll_callback);
   double last_x = 0.0, last_y = 0.0;
@@ -217,12 +223,17 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
 
     const auto pose = cam.pose();
     gsr::renderer::CameraFrame frame;
-    frame.view_from_world = gsr::core::view_from_world(pose);
+    // The renderer works in the splats' own space: compose the world->view transform
+    // with world_from_asset, and hand it the camera position in asset space (SH origin).
+    frame.view_from_world =
+        flip_scene ? gsr::core::view_from_world(pose) * gsr::core::world_from_asset_rotation()
+                   : gsr::core::view_from_world(pose);
     frame.fx = intr.fx;
     frame.fy = intr.fy;
     frame.cx = intr.cx;
     frame.cy = intr.cy;
-    frame.camera_position_world = pose.position;
+    frame.camera_position_world =
+        flip_scene ? gsr::core::asset_from_world(pose.position) : pose.position;
 
     gsr::renderer::FrameTimings timings;
     const gsr::renderer::Rgba8* device_pixels = renderer.render_device(frame, &timings);

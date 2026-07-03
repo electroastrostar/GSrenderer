@@ -41,19 +41,26 @@ latency-offset. Telemetry: per-frame timings, packet rate, late frames.
 
 | Space | Handedness | Up | Forward | Units (wire) | Defined by |
 |---|---|---|---|---|---|
-| Splat asset space | TBD (typically COLMAP/INRIA: right-handed, Y-down) | TBD | TBD | scene-dependent | Phase 1 |
+| Splat asset space | right-handed (COLMAP/INRIA) | **−Y** (asset +Y points down) | +Z | scene-dependent scale | Phase 1/2 (confirmed on real assets, PR #3) |
+| Render world space | right-handed | +Y | −Z (camera at identity) | meters* | Phase 2 |
 | FreeD / StarTracker space | TBD (per Mo-Sys docs; verify on stage) | TBD | TBD | mm + degrees on wire | Phase 3 |
-| Renderer camera space | **right-handed, Y-up, −Z forward** (proposed; confirm Phase 2) | +Y | −Z | meters | Phase 2 |
+| Renderer camera space | right-handed, Y-up, −Z forward | +Y | −Z | meters | Phase 2 |
 | UE5 / nDisplay space | left-handed, Z-up, +X forward, **centimeters** | +Z | +X | cm | UE convention |
+
+\* SfM-trained assets have arbitrary metric scale; stage alignment (scale + origin) is a
+Phase 4 config concern. The preview treats asset units as meters.
 
 ### Transform inventory
 
 Every inter-space transform is a named `X_from_Y` function in `src/core/` with a
-hand-checked unit test (see `CLAUDE.md`). To be populated as transforms land:
+hand-checked unit test (see `CLAUDE.md`):
 
 | Function | From → To | Phase | Test |
 |---|---|---|---|
-| _(none yet)_ | | | |
+| `world_from_asset` / `asset_from_world` (`core/transforms.hpp`) | splat asset ↔ render world (180° about X; SuperSplat-compatible default, `--no-flip` to disable) | 2 | `tests/test_transforms.cpp` |
+| `view_from_world` (`core/camera.hpp`) | render world → camera view | 2 | `tests/test_camera.cpp` |
+| `clip_from_view` (`core/camera.hpp`) | camera view → clip (off-axis capable) | 2 | `tests/test_camera.cpp` |
+| `projection_frame_from_view` / `ewa_rotation_from_view` (`renderer/`) | view → EWA projection frame (y-down, +z fwd) | 2 | `tests/test_covariance.cpp`, `tests/test_ewa_frame.cpp` |
 
 ## 4. Subsystems
 
@@ -79,7 +86,6 @@ hand-checked unit test (see `CLAUDE.md`). To be populated as transforms land:
 
 ## 6. Open Questions
 
-- Confirm splat-asset axis convention against a reference asset (Phase 1).
 - Confirm FreeD position units/axis order as emitted by StarTracker firmware on stage (Phase 3).
 - D3D12 vs OpenGL interop on the Windows render nodes (Phase 2 ADR).
 - H9 chain pixel format expectations for 2110 (YCbCr-4:2:2 10-bit assumed; confirm before Phase 6).
