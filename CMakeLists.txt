@@ -55,6 +55,7 @@ include(cmake/Dependencies.cmake)
 
 add_subdirectory(src/core)
 add_subdirectory(src/loader)
+add_subdirectory(src/tracking)
 add_subdirectory(src/renderer)
 add_subdirectory(src/app)
 add_subdirectory(tools/asset_inspector)

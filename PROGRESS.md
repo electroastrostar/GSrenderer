@@ -17,16 +17,18 @@ UDP and can act as a handheld tracker against the same listener port.
   operator-verified on a 3080 laptop incl. 3 feedback iterations: robust framing,
   world_from_asset flip, opacity-aware/exact-overlap binning).
 
+- Phase 3, Task 1 — FreeD D1 codec (`src/tracking/freed.*`): parse/serialize/checksum,
+  wire→internal unit conversion at the boundary; `docs/freed-protocol.md`; 5 tests incl.
+  hand-built byte fixture, round-trip, malformed rejection, clamping. 58/58 green.
+
 ## In Progress
 
-- **Phase 3, Task 1 — FreeD D1 packet codec** (`src/tracking/freed.{hpp,cpp}`): parse +
-  serialize + checksum, wire-unit conversion (deg/32768, mm/64 → radians/meters) at the
-  I/O boundary; `docs/freed-protocol.md`; unit tests against hand-built byte fixtures.
-  - Exact next step: implement codec + doc + tests; build, test, commit, push.
+- **Phase 3, Task 2 — UDP listener** (`src/tracking/udp_listener.*`, Winsock/POSIX):
+  background receive thread, checksum validation, dropped-packet stats, rate monitor.
+  - Exact next step: socket wrapper + listener with stats; loopback unit test; commit.
 
 ## Next
-
-- Phase 3, Task 2 — UDP listener (`src/tracking/udp_listener.*`, Winsock/POSIX):
+ (`src/tracking/udp_listener.*`, Winsock/POSIX):
   background receive thread, checksum validation, dropped-packet stats, rate monitor.
 - Phase 3, Task 3 — `tools/freed_simulator`: static / orbit / handheld-noise profiles,
   configurable port + rate, shares the codec.
