@@ -22,11 +22,18 @@ verification — expect an iteration loop on the PR.
 - Phase 2, Task 2 — SH evaluation degrees 0–3 (`src/renderer/sh.hpp`, host/device-shared)
   with 6 hand-computed CPU tests incl. channel-major layout + view-dependence property.
 
+- Phase 2, Task 1a — covariance math (`src/renderer/covariance.hpp`): quat+scale → 3D
+  covariance, EWA 2D projection, conic+radius, named view→projection-frame adapter; 8
+  hand-checked CPU tests. 42/42 green.
+
 ## In Progress
 
-- **Phase 2, Task 1a — covariance math**: quat+scale → 3D covariance; EWA projection to
-  2D conic. Host/device-shared header, hand-checked CPU tests.
-  - Exact next step: `src/renderer/covariance.hpp` + `tests/test_covariance.cpp`.
+- **Phase 2, Task 1b — CUDA pipeline** (`src/renderer/`): preprocess (cull + project +
+  SH) → 16×16 tile binning → CUB radix sort on [tile|depth] keys → front-to-back blend.
+  Compiles only when CUDA detected; CANNOT be compiled in this container — first real
+  build happens on the A6000 during verification.
+  - Exact next step: `splat_renderer.{hpp,cu}` + kernels; commit, push (unverified compile,
+    flagged in PR).
 
 ## Next
 
