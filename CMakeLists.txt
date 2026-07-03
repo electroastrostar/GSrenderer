@@ -19,13 +19,15 @@ endif()
 include(CheckLanguage)
 check_language(CUDA)
 if(CMAKE_CUDA_COMPILER)
+  # Must be set BEFORE enable_language, or CMake pins its own default (52).
+  if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES 86) # RTX A6000 (Ampere)
+  endif()
   enable_language(CUDA)
   set(CMAKE_CUDA_STANDARD 17)
   set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-  if(NOT CMAKE_CUDA_ARCHITECTURES)
-    set(CMAKE_CUDA_ARCHITECTURES 86) # RTX A6000 (Ampere)
-  endif()
   set(GSR_CUDA_ENABLED ON)
+  find_package(CUDAToolkit REQUIRED)  # cudart for host-side interop code
   message(STATUS "splatcast: CUDA ${CMAKE_CUDA_COMPILER_VERSION} found "
                  "(arch ${CMAKE_CUDA_ARCHITECTURES}) — GPU targets enabled")
 else()
@@ -36,18 +38,24 @@ endif()
 
 option(GSR_BUILD_TESTS "Build unit tests" ON)
 
-# Warning flags for our own targets only (not dependencies).
+# Warning flags for our own targets only (not dependencies). Guarded per-language so CUDA
+# sources get them via -Xcompiler instead of choking nvcc.
 add_library(gsr_warnings INTERFACE)
 if(MSVC)
-  target_compile_options(gsr_warnings INTERFACE /W4)
+  target_compile_options(gsr_warnings INTERFACE
+    $<$<COMPILE_LANGUAGE:CXX>:/W4>
+    $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/W4>)
 else()
-  target_compile_options(gsr_warnings INTERFACE -Wall -Wextra -Wpedantic)
+  target_compile_options(gsr_warnings INTERFACE
+    $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>
+    $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra>)
 endif()
 
 include(cmake/Dependencies.cmake)
 
 add_subdirectory(src/core)
 add_subdirectory(src/loader)
+add_subdirectory(src/renderer)
 add_subdirectory(src/app)
 add_subdirectory(tools/asset_inspector)
 

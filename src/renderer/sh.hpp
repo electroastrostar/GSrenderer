@@ -14,19 +14,21 @@
 namespace gsr::renderer {
 
 // Real SH basis constants (Y_l^m up to l=3), matching the reference 3DGS rasterizer.
+// NOTE: the array tables live INSIDE the functions — nvcc cannot reference namespace-scope
+// constexpr arrays from device code (even with --expt-relaxed-constexpr).
 inline constexpr float kSH0 = 0.28209479177387814f;
 inline constexpr float kSH1 = 0.4886025119029199f;
-inline constexpr float kSH2[5] = {1.0925484305920792f, -1.0925484305920792f,
-                                  0.31539156525252005f, -1.0925484305920792f,
-                                  0.5462742152960396f};
-inline constexpr float kSH3[7] = {-0.5900435899266435f, 2.890611442640554f,
-                                  -0.4570457994644658f, 0.3731763325901154f,
-                                  -0.4570457994644658f, 1.445305721320277f,
-                                  -0.5900435899266435f};
 
 // Non-DC basis functions for unit direction (x,y,z), written to basis[0..rest-1] in the
 // f_rest coefficient order (rest = (degree+1)^2 - 1; degree must be 0..3).
 GSR_HD inline void eval_sh_basis(int degree, float x, float y, float z, float* basis) {
+  constexpr float kSH2[5] = {1.0925484305920792f, -1.0925484305920792f,
+                             0.31539156525252005f, -1.0925484305920792f,
+                             0.5462742152960396f};
+  constexpr float kSH3[7] = {-0.5900435899266435f, 2.890611442640554f,
+                             -0.4570457994644658f, 0.3731763325901154f,
+                             -0.4570457994644658f, 1.445305721320277f,
+                             -0.5900435899266435f};
   if (degree >= 1) {
     basis[0] = -kSH1 * y;
     basis[1] = kSH1 * z;

@@ -4,10 +4,10 @@ Tracking file per SPLATCAST_PLAN.md §7.1. Current phase: **Phase 2 — Core Ren
 static camera** (branch `claude/phase-0-scaffolding-qf5mw4`, restarted from `main` after
 the Phase 1 PR #2 merged — session tooling pins the branch name; PR title carries the phase).
 
-**Phase 2 development constraint:** authored in a container with no GPU/`nvcc`. All math
-(SH eval, covariance, camera) is CPU-unit-tested here; CUDA kernels + GLFW preview compile
-only behind CUDA detection and get their first real build on the A6000 during operator
-verification — expect an iteration loop on the PR.
+**Phase 2 development constraint:** authored in a container with no GPU. CUDA toolkit 12.0
+was installed in-container, so all CUDA/GLFW code is COMPILE-verified (nvcc arch 86, zero
+warnings) — but never EXECUTED. Kernel correctness/perf is validated on the A6000 via the
+hidden "[gpu]" tests + visual check during operator verification.
 
 ## Done
 
@@ -26,14 +26,18 @@ verification — expect an iteration loop on the PR.
   covariance, EWA 2D projection, conic+radius, named view→projection-frame adapter; 8
   hand-checked CPU tests. 42/42 green.
 
+- Phase 2, Task 1b — CUDA pipeline (`splat_renderer.cu`): preprocess (cull+project+SH) →
+  tile binning → CUB radix sort → front-to-back blend; per-stage cudaEvent timings;
+  grow-only device buffers; hot path returns nullptr + logs (no exceptions).
+- Phase 2, Tasks 3+4 — GLFW preview with CUDA→GL PBO interop, WASD/mouse fly camera,
+  window-title HUD + 1 Hz frame-stamped timing log; CLI flags (--width/--height/--fov/
+  --sh-clamp/--vsync). Hidden "[.gpu]" integration tests for the A6000.
+
 ## In Progress
 
-- **Phase 2, Task 1b — CUDA pipeline** (`src/renderer/`): preprocess (cull + project +
-  SH) → 16×16 tile binning → CUB radix sort on [tile|depth] keys → front-to-back blend.
-  Compiles only when CUDA detected; CANNOT be compiled in this container — first real
-  build happens on the A6000 during verification.
-  - Exact next step: `splat_renderer.{hpp,cu}` + kernels; commit, push (unverified compile,
-    flagged in PR).
+- **Phase 2 wrap-up** — `docs/verification/phase-2.md` (visual match vs SuperSplat, [gpu]
+  tests, perf gate ≥60fps@1080p/3M), final acceptance build, PR.
+  - Exact next step: write verification doc, fresh acceptance build, open PR.
 
 ## Next
 
