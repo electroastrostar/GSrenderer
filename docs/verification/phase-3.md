@@ -47,7 +47,7 @@ ctest --test-dir build -C Release --output-on-failure
 ctest --test-dir build --output-on-failure
 ```
 
-✅ **PASS:** `100% tests passed, 0 tests failed out of 77` (24 new: FreeD packet codec
+✅ **PASS:** `100% tests passed, 0 tests failed out of 78` (25 new: FreeD packet codec
 byte fixtures, UDP loopback, pose prediction, lens table, `render_from_freed`).
 
 ## 3. Tracked orbit — the main acceptance check
@@ -169,7 +169,7 @@ As before: open the Phase 3 PR, **click the checkboxes** in the description (fal
 `⋯ → Edit`). Paste terminal output/video for failures as PR comments. Merge when the
 required boxes (not §6) are green.
 
-- [ ] Build warning-clean; `ctest` 77/77 (§1–2)
+- [ ] Build warning-clean; `ctest` 78/78 (§1–2)
 - [ ] Simulator orbit: camera circles the cube facing it, smooth, `trk ~50 Hz`, `rej:0`;
       freeze-then-fly on simulator stop (§3)
 - [ ] `--latency-ms 400` visibly leads the 0 ms pose (§4)
