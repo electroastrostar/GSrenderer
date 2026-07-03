@@ -33,11 +33,15 @@ hidden "[gpu]" tests + visual check during operator verification.
   window-title HUD + 1 Hz frame-stamped timing log; CLI flags (--width/--height/--fov/
   --sh-clamp/--vsync). Hidden "[.gpu]" integration tests for the A6000.
 
+- Phase 2 wrap-up — `docs/verification/phase-2.md` written (first-GPU-run warning, [gpu]
+  tests, SuperSplat visual match, perf gate w/ HUD numbers). Fresh out-of-tree host build:
+  0 warnings, 44/44 tests. CUDA side compile-verified (arch 86, 0 warnings), NOT executed.
+
 ## In Progress
 
-- **Phase 2 wrap-up** — `docs/verification/phase-2.md` (visual match vs SuperSplat, [gpu]
-  tests, perf gate ≥60fps@1080p/3M), final acceptance build, PR.
-  - Exact next step: write verification doc, fresh acceptance build, open PR.
+- (nothing — Phase 2 code complete; awaiting operator verification per
+  `docs/verification/phase-2.md` — the first real GPU run — then PR merge. Expect
+  possible iteration on runtime issues the container could not catch.)
 
 ## Next
 
