@@ -50,9 +50,16 @@ hidden "[gpu]" tests + visual check during operator verification.
   view_from_asset + SH camera position in asset space; `--no-flip` escape hatch;
   architecture.md coordinate table + transform inventory updated. 49/49 tests.
 
+- Phase 2, PR #3 iteration 3 — perf: operator measured 49.3 fps @1080p on a laptop 3080
+  (advisory; A6000 projection ~85-90 fps, gate likely met) with 9.8M pairs. Landed the
+  approved binning optimization: opacity-aware alpha-cutoff extents (cull < 1/255) +
+  exact tile/ellipse overlap test shared by count & emission loops (offsets-parity guard
+  test). Deep perf work (plan §6.3) deferred until an A6000 measurement fails the gate.
+  53/53 tests, CUDA build clean.
+
 ## In Progress
 
-- (Phase 2 PR #3 awaiting operator re-verification of §5b + §6 after the orientation fix.)
+- (Phase 2 PR #3 awaiting operator perf re-test of §6, then merge → Phase 3.)
 
 ## Next
 

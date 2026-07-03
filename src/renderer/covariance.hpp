@@ -101,10 +101,20 @@ GSR_HD inline void project_covariance_ewa(const float cov6[6], float tx, float t
   cov2d[2] = b0 * t10 + b1 * t11 + b2 * t12 + 0.3f;
 }
 
+// Minimum blendable alpha: the blend kernel skips contributions below 1/255, so any
+// pixel where opacity * exp(power) < 1/255 can be excluded from binning too.
+inline constexpr float kMinAlpha = 1.0f / 255.0f;
+
+// Cutoff |power| for a splat of peak opacity alpha: alpha * exp(-cutoff) == 1/255.
+GSR_HD inline float power_cutoff(float opacity) { return logf(255.0f * opacity); }
+
 // Invert the 2D covariance into the conic used by the blend kernel; returns false when
-// degenerate (skip the splat). Also writes the screen-space radius (3 sigma, reference
-// formula) for tile binning.
-GSR_HD inline bool conic_from_cov2d(const float cov2d[3], float conic[3], float* radius_px) {
+// degenerate OR the splat can never reach 1/255 alpha (skip it). Writes the screen-space
+// binning radius: opacity-aware alpha-cutoff extent sqrt(2*ln(255*alpha)) sigma —
+// ~3.33 sigma for opaque splats, much tighter for translucent ones — rounded up.
+GSR_HD inline bool conic_from_cov2d(const float cov2d[3], float opacity, float conic[3],
+                                    float* radius_px) {
+  if (!(opacity >= kMinAlpha)) return false;  // also rejects NaN opacity
   const float det = cov2d[0] * cov2d[2] - cov2d[1] * cov2d[1];
   if (det <= 0.0f) return false;
   const float inv_det = 1.0f / det;
@@ -112,14 +122,56 @@ GSR_HD inline bool conic_from_cov2d(const float cov2d[3], float conic[3], float*
   conic[1] = -cov2d[1] * inv_det;
   conic[2] = cov2d[0] * inv_det;
 
-  // Largest eigenvalue of the 2x2 -> 3-sigma pixel radius, rounded up (reference formula).
+  // Largest eigenvalue of the 2x2 (= sigma_max^2), then the alpha-cutoff radius.
   const float mid = 0.5f * (cov2d[0] + cov2d[2]);
   float disc = mid * mid - det;
   disc = disc > 0.1f ? disc : 0.1f;
-  const float r = 3.0f * sqrtf(mid + sqrtf(disc));
+  const float lambda_max = mid + sqrtf(disc);
+  const float r = sqrtf(2.0f * power_cutoff(opacity) * lambda_max);
   const int ri = static_cast<int>(r);
   *radius_px = static_cast<float>(static_cast<float>(ri) < r ? ri + 1 : ri);
   return true;
+}
+
+namespace detail {
+// Minimum of Q(x,y) = 0.5*(a x^2 + c y^2) + b x y along the segment x = x_fixed,
+// y in [ly, uy] (closed form: clamp the 1D vertex).
+GSR_HD inline float edge_min_x_fixed(float x, float ly, float uy, float a, float b,
+                                     float c) {
+  float y = c > 0.0f ? -b * x / c : ly;
+  y = y < ly ? ly : (y > uy ? uy : y);
+  return 0.5f * (a * x * x + c * y * y) + b * x * y;
+}
+GSR_HD inline float edge_min_y_fixed(float y, float lx, float ux, float a, float b,
+                                     float c) {
+  float x = a > 0.0f ? -b * y / a : lx;
+  x = x < lx ? lx : (x > ux ? ux : x);
+  return 0.5f * (a * x * x + c * y * y) + b * x * y;
+}
+}  // namespace detail
+
+// Exact tile/splat overlap: does any PIXEL CENTER in the tile receive alpha >= 1/255?
+// Evaluates the minimum Gaussian power over the tile's pixel rect (convex quadratic:
+// interior if the center is inside, else the exact minimum over the four edges) and
+// compares against power_cutoff(opacity). Replaces bounding-square binning, which claims
+// every tile in the radius square — ~21%+ waste for isotropic splats, far more for
+// elongated ones. MUST be the single source of truth for binning: the preprocess count
+// and the key-emission loop both call this, or their counts diverge and the offset
+// buffer is corrupted.
+GSR_HD inline bool tile_overlaps_splat(int tile_x, int tile_y, int tile_size, float u,
+                                       float v, const float conic[3], float cutoff) {
+  const float lx = static_cast<float>(tile_x * tile_size) - u;
+  const float ux = lx + static_cast<float>(tile_size - 1);
+  const float ly = static_cast<float>(tile_y * tile_size) - v;
+  const float uy = ly + static_cast<float>(tile_size - 1);
+  if (lx <= 0.0f && 0.0f <= ux && ly <= 0.0f && 0.0f <= uy) return true;  // center inside
+
+  const float a = conic[0], b = conic[1], c = conic[2];
+  float m = detail::edge_min_x_fixed(lx, ly, uy, a, b, c);
+  m = fminf(m, detail::edge_min_x_fixed(ux, ly, uy, a, b, c));
+  m = fminf(m, detail::edge_min_y_fixed(ly, lx, ux, a, b, c));
+  m = fminf(m, detail::edge_min_y_fixed(uy, lx, ux, a, b, c));
+  return m <= cutoff;
 }
 
 }  // namespace gsr::renderer

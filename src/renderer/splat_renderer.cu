@@ -116,16 +116,25 @@ __global__ void preprocess_kernel(int n, const float* __restrict__ position,
                          p.w_rows, cov2d);
   float conic[3];
   float radius = 0.0f;
-  if (!conic_from_cov2d(cov2d, conic, &radius)) return;
+  const float op = opacity[i];
+  if (!conic_from_cov2d(cov2d, op, conic, &radius)) return;
 
-  // Tile rectangle touched by the 3-sigma extent.
+  // Bounding tile rect from the alpha-cutoff radius, then the exact per-tile overlap
+  // test. MUST match duplicate_keys_kernel exactly (same rect, same test) or the
+  // prefix-sum offsets are corrupted.
   const int x_min = min(p.grid_x, max(0, static_cast<int>((u - radius) / kTileSize)));
   const int x_max =
       min(p.grid_x, max(0, static_cast<int>((u + radius + kTileSize - 1.0f) / kTileSize)));
   const int y_min = min(p.grid_y, max(0, static_cast<int>((v - radius) / kTileSize)));
   const int y_max =
       min(p.grid_y, max(0, static_cast<int>((v + radius + kTileSize - 1.0f) / kTileSize)));
-  const int touched = (x_max - x_min) * (y_max - y_min);
+  const float cutoff = power_cutoff(op);
+  int touched = 0;
+  for (int ty = y_min; ty < y_max; ++ty) {
+    for (int tx = x_min; tx < x_max; ++tx) {
+      if (tile_overlaps_splat(tx, ty, kTileSize, u, v, conic, cutoff)) ++touched;
+    }
+  }
   if (touched <= 0) return;
 
   // SH color from the physical-camera view direction (world space).
@@ -140,7 +149,7 @@ __global__ void preprocess_kernel(int n, const float* __restrict__ position,
 
   means2d[i] = make_float2(u, v);
   depths[i] = t[2];
-  conic_opacity[i] = make_float4(conic[0], conic[1], conic[2], opacity[i]);
+  conic_opacity[i] = make_float4(conic[0], conic[1], conic[2], op);
   rgb[i] = make_float3(color[0], color[1], color[2]);
   radii[i] = static_cast<int>(radius);
   tiles_touched[i] = static_cast<unsigned int>(touched);
@@ -151,6 +160,7 @@ __global__ void preprocess_kernel(int n, const float* __restrict__ position,
 __global__ void duplicate_keys_kernel(int n, const float2* __restrict__ means2d,
                                       const float* __restrict__ depths,
                                       const int* __restrict__ radii,
+                                      const float4* __restrict__ conic_opacity,
                                       const unsigned int* __restrict__ offsets, int grid_x,
                                       int grid_y, std::uint64_t* __restrict__ keys,
                                       unsigned int* __restrict__ values) {
@@ -159,6 +169,7 @@ __global__ void duplicate_keys_kernel(int n, const float2* __restrict__ means2d,
 
   const float u = means2d[i].x, v = means2d[i].y;
   const float radius = static_cast<float>(radii[i]);
+  // Same rect + same overlap test as preprocess_kernel — the counts must match.
   const int x_min = min(grid_x, max(0, static_cast<int>((u - radius) / kTileSize)));
   const int x_max =
       min(grid_x, max(0, static_cast<int>((u + radius + kTileSize - 1.0f) / kTileSize)));
@@ -166,10 +177,15 @@ __global__ void duplicate_keys_kernel(int n, const float2* __restrict__ means2d,
   const int y_max =
       min(grid_y, max(0, static_cast<int>((v + radius + kTileSize - 1.0f) / kTileSize)));
 
+  const float4 con = conic_opacity[i];
+  const float conic[3] = {con.x, con.y, con.z};
+  const float cutoff = power_cutoff(con.w);
+
   unsigned int off = offsets[i];  // exclusive prefix sum of tiles_touched
   const unsigned int depth_bits = __float_as_uint(depths[i]);  // >0 so order-preserving
   for (int ty = y_min; ty < y_max; ++ty) {
     for (int tx = x_min; tx < x_max; ++tx) {
+      if (!tile_overlaps_splat(tx, ty, kTileSize, u, v, conic, cutoff)) continue;
       const std::uint64_t tile = static_cast<std::uint64_t>(ty) * grid_x + tx;
       keys[off] = (tile << 32) | depth_bits;
       values[off] = static_cast<unsigned int>(i);
@@ -463,8 +479,9 @@ const Rgba8* SplatRenderer::render_device(const CameraFrame& camera, FrameTiming
       return nullptr;
     }
     duplicate_keys_kernel<<<blocks, threads>>>(n, im.means2d.ptr, im.depths.ptr,
-                                               im.radii.ptr, im.offsets.ptr, im.grid_x,
-                                               im.grid_y, im.keys_in.ptr, im.vals_in.ptr);
+                                               im.radii.ptr, im.conic_opacity.ptr,
+                                               im.offsets.ptr, im.grid_x, im.grid_y,
+                                               im.keys_in.ptr, im.vals_in.ptr);
     if (!cuda_check_log(cudaGetLastError(), "duplicate_keys_kernel")) return nullptr;
 
     // 4. Radix sort pairs by [tile | depth].

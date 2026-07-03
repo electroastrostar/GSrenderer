@@ -172,6 +172,16 @@ Note the fps and per-stage ms in the PR — they gate what optimizations Phase 2
 the title-bar numbers + splat count into the PR; sort/blend timings tell us where to
 optimize.
 
+Notes after the first perf report (laptop 3080, 49.3 fps, 9.8M pairs):
+
+- **The formal gate is the A6000** — a laptop-3080 number is advisory (the A6000 has
+  ~1.7× its throughput). Record whichever machine you measured on in the PR comment.
+- The binning optimization landed after that report (opacity-aware extents + exact
+  tile/ellipse overlap) should show **substantially fewer pairs** in the HUD and higher
+  fps on the same scene/viewpoint. Also re-glance §5a/5b visuals: splat edges must show
+  **no new clipping or popping** (extents for opaque splats actually grew slightly —
+  softer edges, not harder).
+
 ## 7. Record your results on the PR
 
 Same procedure as before: open the Phase 2 PR in a browser (signed in), **click the
