@@ -9,6 +9,7 @@ add_executable(gsr_tests
   test_sh.cpp
   test_splat_data.cpp
   test_transforms.cpp
+  test_udp_listener.cpp
   test_version.cpp
 )
 

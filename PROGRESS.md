@@ -21,17 +21,18 @@ UDP and can act as a handheld tracker against the same listener port.
   wire→internal unit conversion at the boundary; `docs/freed-protocol.md`; 5 tests incl.
   hand-built byte fixture, round-trip, malformed rejection, clamping. 58/58 green.
 
+- Phase 3, Task 2 — UDP listener (`src/tracking/udp_listener.*`): Winsock/POSIX socket
+  wrapper, background receive thread, stats (ok/rejected/rate), latest-pose mailbox +
+  callback, UdpSender for simulator/tests; 3 loopback tests. 61/61 green.
+
 ## In Progress
 
-- **Phase 3, Task 2 — UDP listener** (`src/tracking/udp_listener.*`, Winsock/POSIX):
-  background receive thread, checksum validation, dropped-packet stats, rate monitor.
-  - Exact next step: socket wrapper + listener with stats; loopback unit test; commit.
+- **Phase 3, Task 3 — `tools/freed_simulator`**: static / orbit / handheld-noise
+  profiles, configurable port + rate, shares the codec + UdpSender.
+  - Exact next step: simulator main + CMake; smoke-test against listener; commit.
 
 ## Next
- (`src/tracking/udp_listener.*`, Winsock/POSIX):
-  background receive thread, checksum validation, dropped-packet stats, rate monitor.
-- Phase 3, Task 3 — `tools/freed_simulator`: static / orbit / handheld-noise profiles,
-  configurable port + rate, shares the codec.
+
 - Phase 3, Task 4 — pose filter: timestamped ring buffer + linear-velocity prediction
   with configurable latency offset (ms); unit tests with hand-computed fixtures.
 - Phase 3, Task 5 — lens model: zoom/focus raw → focal length via CSV table
