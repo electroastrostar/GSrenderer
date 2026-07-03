@@ -53,11 +53,11 @@ UDP and can act as a handheld tracker against the same listener port.
   two-terminal walkthrough, optional iOS VirtualProductionCamera section, not a merge
   gate). Fresh out-of-tree build: 0 warnings, 77/77 tests. PR opened.
 
+- Phase 3, PR #4 iteration 1 — operator hit MSVC build errors: preview.hpp used
+  std::string without <string> (GCC transitive include masked it); the §3 "unknown
+  option --freed-port" was the stale Phase 2 exe after that build failure. Fix:
+  <string> in preview.hpp + <memory> (make_unique) in preview.cpp. 77/77 both builds.
+
 ## In Progress
 
-- (nothing — Phase 3 complete; awaiting operator verification per
-  `docs/verification/phase-3.md`, then merge → Phase 4 off-axis frustum.)
-- Phase 3, integration — preview gains `--freed-port` tracked-camera mode +
-  `--latency-ms`; smooth orbit from simulator = acceptance.
-- Phase 3 wrap-up — `docs/verification/phase-3.md` (simulator-based, no tracker
-  needed; optional phone-app section), PR.
+- (Phase 3 PR #4 awaiting operator re-verification from §1, then merge → Phase 4.)

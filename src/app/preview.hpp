@@ -3,6 +3,8 @@
 #include "loader/splat_data.hpp"
 #include "renderer/splat_renderer.hpp"
 
+#include <string>
+
 // Interactive debug preview (Phase 2): GLFW window fed by the CUDA renderer through a
 // GL pixel-buffer-object interop path (no CPU round-trip). Free-fly camera:
 //   WASD move, Q/E down/up, right-mouse drag to look, Shift = 5x speed, Esc quits.
