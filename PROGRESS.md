@@ -38,13 +38,17 @@ UDP and can act as a handheld tracker against the same listener port.
   zoom→focal table (header/comment tolerant, clamped ends), fixed-focal fallback,
   focal_px_from_mm; `configs/example_lens.csv`; 6 tests. 74/74 green.
 
+- Phase 3, Task 6 — `render_from_freed` in core/transforms: freed X→−Z, Y→−X, Z→+Y,
+  pan/tilt/roll per freed-protocol.md; 3 hand-checked fixture groups + simulator-orbit
+  "faces the origin" consistency test; architecture.md table + inventory updated.
+  77/77 green.
+
 ## In Progress
 
-- **Phase 3, Task 6 — `render_from_freed`** convention transform in `src/core/`
-  (+ architecture.md coordinate table row + hand-checked tests incl. simulator-orbit
-  consistency).
-  - Exact next step: implement in core/transforms + tests; update architecture.md;
-    commit.
+- **Phase 3, integration — tracked-camera preview**: `--freed-port`, `--latency-ms`,
+  `--lens-file`/`--sensor-height-mm` wiring listener → predictor → render_from_freed →
+  renderer; tracking HUD additions (rate, rejected).
+  - Exact next step: preview/app changes; CUDA-build compile check; commit.
 - Phase 3, integration — preview gains `--freed-port` tracked-camera mode +
   `--latency-ms`; smooth orbit from simulator = acceptance.
 - Phase 3 wrap-up — `docs/verification/phase-3.md` (simulator-based, no tracker
