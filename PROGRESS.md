@@ -34,16 +34,17 @@ UDP and can act as a handheld tracker against the same listener port.
   freeze horizon; latency offset applied at the query site. 7 hand-computed tests
   incl. the "latency offset shifts the prediction" acceptance property. 68/68 green.
 
+- Phase 3, Task 5 — lens model (`src/tracking/lens_table.*`): interpolated CSV
+  zoom→focal table (header/comment tolerant, clamped ends), fixed-focal fallback,
+  focal_px_from_mm; `configs/example_lens.csv`; 6 tests. 74/74 green.
+
 ## In Progress
 
-- **Phase 3, Task 5 — lens model** (`src/tracking/lens_table.*`): zoom raw → focal
-  length via interpolated CSV table, fixed-intrinsics fallback; unit tests.
-  - Exact next step: implement + tests + example CSV in configs/; commit.
-
-## Next
-
-- Phase 3, Task 6 — `render_from_freed` convention transform in `src/core/` (+
-  architecture.md coordinate table row + hand-checked tests).
+- **Phase 3, Task 6 — `render_from_freed`** convention transform in `src/core/`
+  (+ architecture.md coordinate table row + hand-checked tests incl. simulator-orbit
+  consistency).
+  - Exact next step: implement in core/transforms + tests; update architecture.md;
+    commit.
 - Phase 3, integration — preview gains `--freed-port` tracked-camera mode +
   `--latency-ms`; smooth orbit from simulator = acceptance.
 - Phase 3 wrap-up — `docs/verification/phase-3.md` (simulator-based, no tracker

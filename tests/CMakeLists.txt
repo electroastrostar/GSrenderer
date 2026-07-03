@@ -4,6 +4,7 @@ add_executable(gsr_tests
   test_ewa_frame.cpp
   test_fixture_asset.cpp
   test_freed.cpp
+  test_lens_table.cpp
   test_log.cpp
   test_ply_loader.cpp
   test_pose_predictor.cpp

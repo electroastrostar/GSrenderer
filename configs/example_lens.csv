@@ -1,0 +1,9 @@
+# Example lens calibration table: FreeD zoom raw counts -> focal length (mm).
+# Replace with values from a real stage lens calibration pass (plan §6.5) —
+# Mo-Sys lens files export the same zoom->focal relationship.
+zoom_raw,focal_mm
+0,24.0
+262144,35.0
+524288,50.0
+786432,85.0
+1048575,135.0
