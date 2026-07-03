@@ -40,6 +40,13 @@ struct SplatData {
 // Axis-aligned bounding box over positions. Throws std::invalid_argument when count == 0.
 Bounds compute_bounds(const SplatData& data);
 
+// Percentile bounding box over positions (per-axis), robust to the far-away outlier
+// splats SfM-trained scenes carry (sky/background points). lower/upper in (0,1),
+// e.g. 0.05/0.95. Uses a stride subsample above ~100k splats. Throws
+// std::invalid_argument when count == 0 or percentiles are invalid.
+Bounds compute_robust_bounds(const SplatData& data, float lower = 0.05f,
+                             float upper = 0.95f);
+
 // Total payload bytes across all arrays (CPU copy == GPU upload size).
 std::size_t byte_size(const SplatData& data);
 

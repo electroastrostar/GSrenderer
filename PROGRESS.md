@@ -37,11 +37,15 @@ hidden "[gpu]" tests + visual check during operator verification.
   tests, SuperSplat visual match, perf gate w/ HUD numbers). Fresh out-of-tree host build:
   0 warnings, 44/44 tests. CUDA side compile-verified (arch 86, 0 warnings), NOT executed.
 
+- Phase 2, PR #3 iteration 1 — operator report: real scene spawns "infinitely far",
+  WASD ineffective (fixture OK). Cause: raw bounds inflated by SfM outlier splats +
+  fixed 2 m/s speed in arbitrary-scale scenes. Fix: compute_robust_bounds (percentile,
+  tested), camera framing + fly speed derived from robust radius, scroll-wheel speed
+  control with `spd` HUD readout. 46/46 tests, CUDA build clean.
+
 ## In Progress
 
-- (nothing — Phase 2 code complete; awaiting operator verification per
-  `docs/verification/phase-2.md` — the first real GPU run — then PR merge. Expect
-  possible iteration on runtime issues the container could not catch.)
+- (Phase 2 PR #3 awaiting operator re-verification of §5b + §6 after the framing fix.)
 
 ## Next
 

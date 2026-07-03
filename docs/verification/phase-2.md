@@ -106,8 +106,9 @@ build\src\app\Release\splatcast.exe assets\fixtures\cube_deg3.ply
 
 ✅ **PASS:** a window opens showing **8 small colored blobs arranged as the corners of a
 cube** on black. Controls: **WASD** move, **Q/E** down/up, **hold right mouse + drag** to
-look, **Shift** = fast, **Esc** quits. Fly around; the blobs must stay glued to their 3D
-positions (no swimming/jumping).
+look, **scroll wheel** = fly speed up/down (shown as `spd` in the title bar), **Shift** =
+5× boost, **Esc** quits. Fly around; the blobs must stay glued to their 3D positions (no
+swimming/jumping).
 
 **5b. Real scene, compared against a reference viewer.** Use your real asset (example
 paths — substitute yours):
@@ -121,6 +122,10 @@ build\src\app\Release\splatcast.exe C:\assets\myscene.ply
 # Linux
 ./build/src/app/splatcast ~/assets/myscene.ply
 ```
+
+The camera spawns framing the densest 90% of the scene (far-away background/sky splats are
+ignored for framing), and fly speed auto-scales to the scene — if movement still feels too
+slow or fast, **scroll the mouse wheel** to adjust it (`spd` in the title bar).
 
 Then open **the same `.ply`** in SuperSplat (<https://superspl.at/editor>, drag the file
 in) and navigate both to roughly the same viewpoint.

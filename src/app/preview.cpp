@@ -64,6 +64,8 @@ struct FlyCamera {
   glm::vec3 position{0.0f};
   float yaw = 0.0f;    // radians about world +Y
   float pitch = 0.0f;  // radians about camera right
+  float base_speed = 2.0f;   // scene-units/s, set from the scene's robust radius
+  float speed_scale = 1.0f;  // scroll-wheel multiplier
 
   gsr::core::CameraPose pose() const {
     gsr::core::CameraPose p;
@@ -74,21 +76,34 @@ struct FlyCamera {
   }
 };
 
-// Start ~2.5 bounding-radii back from the asset center so the scene is in frame.
+// Start ~2.5 radii back from the scene core. ROBUST (percentile) bounds, not the raw
+// bounding box: SfM scenes carry sky/background outlier splats hundreds of units out,
+// and raw bounds would park the camera "infinitely far" with movement that feels dead
+// (PR #3 operator report). Fly speed also derives from this radius: SfM scene scale is
+// arbitrary, so a fixed m/s is meaningless.
 FlyCamera initial_camera(const loader::SplatData& data) {
-  const auto b = gsr::loader::compute_bounds(data);
+  const auto b = gsr::loader::compute_robust_bounds(data);
   const glm::vec3 center{(b.min[0] + b.max[0]) * 0.5f, (b.min[1] + b.max[1]) * 0.5f,
                          (b.min[2] + b.max[2]) * 0.5f};
   const glm::vec3 extent{b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2]};
   const float radius = 0.5f * std::max(0.5f, glm::length(extent));
   FlyCamera cam;
   cam.position = center + glm::vec3(0.0f, 0.0f, 2.5f * radius);
+  cam.base_speed = 0.6f * radius;  // ~4 s to cross the scene core at neutral scroll
   return cam;
+}
+
+// Scroll wheel scales fly speed (1.15x per detent), clamped to a generous range.
+void scroll_callback(GLFWwindow* window, double /*dx*/, double dy) {
+  auto* cam = static_cast<FlyCamera*>(glfwGetWindowUserPointer(window));
+  if (cam == nullptr) return;
+  cam->speed_scale *= std::pow(1.15f, static_cast<float>(dy));
+  cam->speed_scale = std::min(1000.0f, std::max(0.001f, cam->speed_scale));
 }
 
 void handle_input(GLFWwindow* window, FlyCamera& cam, float dt, double* last_x,
                   double* last_y) {
-  float speed = 2.0f * dt;  // m/s baseline
+  float speed = cam.base_speed * cam.speed_scale * dt;
   if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) speed *= 5.0f;
 
   const auto pose = cam.pose();
@@ -171,12 +186,16 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
   }
 
   FlyCamera cam = initial_camera(data);
+  glfwSetWindowUserPointer(window, &cam);
+  glfwSetScrollCallback(window, scroll_callback);
   double last_x = 0.0, last_y = 0.0;
   glfwGetCursorPos(window, &last_x, &last_y);
 
   log->info("preview: {}x{}, fov {:.1f} deg, vsync {}", options.width, options.height,
             glm::degrees(fov), options.vsync ? "on" : "off");
-  log->info("controls: WASD move, Q/E down/up, right-drag look, Shift fast, Esc quit");
+  log->info("controls: WASD move, Q/E down/up, right-drag look, SCROLL speed, Shift fast, "
+            "Esc quit (fly speed {:.2f} units/s)",
+            cam.base_speed);
 
   double prev_time = glfwGetTime();
   double hud_time = prev_time;
@@ -257,10 +276,10 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
       char title[256];
       std::snprintf(title, sizeof title,
                     "splatcast — %.1f fps | cull+proj %.2f ms | sort %.2f ms | blend %.2f "
-                    "ms | GPU total %.2f ms | %u pairs",
+                    "ms | GPU total %.2f ms | %u pairs | spd %.2f",
                     hud_frames / static_cast<float>(now - hud_time), acc.preprocess_ms * inv,
                     acc.sort_ms * inv, acc.blend_ms * inv, acc.total_ms * inv,
-                    acc.pairs_rendered);
+                    acc.pairs_rendered, cam.base_speed * cam.speed_scale);
       glfwSetWindowTitle(window, title);
       if (now - log_time > 1.0) {
         log->info("{:.1f} fps | preprocess {:.2f} ms | sort {:.2f} ms | blend {:.2f} ms | "
