@@ -113,7 +113,7 @@ TEST_CASE("parse_freed_d1 rejects malformed packets", "[tracking][freed]") {
   }
 }
 
-TEST_CASE("serialize clamps out-of-range wire values instead of wrapping",
+TEST_CASE("serialize clamps out-of-range positions instead of wrapping",
           "[tracking][freed]") {
   FreedPose in;
   in.x_m = 1.0e9f;  // far beyond int24 mm*64 range
@@ -121,4 +121,29 @@ TEST_CASE("serialize clamps out-of-range wire values instead of wrapping",
   const auto out = trk::parse_freed_d1(bytes);
   REQUIRE(out.has_value());
   CHECK(out->x_m == Approx(0x7FFFFF / 64.0f / 1000.0f).epsilon(1e-4));  // int24 max ≈ 131.07 m
+}
+
+// Angles are periodic, so serialize WRAPS them (positions clamp). Hand-checked:
+// +190° ≡ -170°, -400° ≡ -40°. An endless orbit pan must round-trip smoothly instead of
+// freezing at the ±256° wire clamp (PR #4 operator report: camera veered off-orbit).
+TEST_CASE("serialize wraps angles into [-180,180) instead of clamping",
+          "[tracking][freed]") {
+  const float deg = kPi / 180.0f;
+  FreedPose in;
+
+  in.pan_rad = 190.0f * deg;
+  auto out = trk::parse_freed_d1(trk::serialize_freed_d1(in));
+  REQUIRE(out.has_value());
+  CHECK(out->pan_rad == Approx(-170.0f * deg).epsilon(1e-4));
+
+  in.pan_rad = -400.0f * deg;
+  out = trk::parse_freed_d1(trk::serialize_freed_d1(in));
+  REQUIRE(out.has_value());
+  CHECK(out->pan_rad == Approx(-40.0f * deg).epsilon(1e-4));
+
+  // 20 seconds into the default 12 s orbit: pan = pi - 2*pi*20/12 rad = -420° ≡ -60°.
+  in.pan_rad = kPi - 2.0f * kPi * 20.0f / 12.0f;
+  out = trk::parse_freed_d1(trk::serialize_freed_d1(in));
+  REQUIRE(out.has_value());
+  CHECK(out->pan_rad == Approx(-60.0f * deg).epsilon(1e-3));
 }

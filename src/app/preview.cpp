@@ -228,6 +228,8 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
             "Esc quit (fly speed {:.2f} units/s)",
             cam.base_speed);
 
+  bool was_tracked = false;
+  gsr::core::CameraPose last_tracked_pose;
   double prev_time = glfwGetTime();
   double hud_time = prev_time;
   double log_time = prev_time;
@@ -245,33 +247,52 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
     const float dt = static_cast<float>(now - prev_time);
     prev_time = now;
 
-    // Tracker drives the camera when data is flowing; fly controls otherwise.
+    // Tracker drives the camera while packets are FRESH; on dropout (simulator
+    // stopped, cable pulled) control hands back to the fly camera in place after 0.5 s
+    // instead of freezing forever (PR #4 operator report).
     gsr::core::CameraPose pose;
     gsr::core::Intrinsics intr = base_intr;
     bool tracked = false;
     if (predictor) {
+      constexpr std::uint64_t kTrackingStaleUs = 500'000;
+      const std::uint64_t now_us = gsr::log::mono_us();
+      const auto newest = listener->latest();
+      const bool fresh =
+          newest.has_value() && now_us - newest->t_mono_us < kTrackingStaleUs;
       const auto latency_us =
           static_cast<std::int64_t>(static_cast<double>(options.latency_ms) * 1000.0);
-      if (const auto predicted =
-              predictor->predict(gsr::log::mono_us() + static_cast<std::uint64_t>(
-                                                           latency_us > 0 ? latency_us : 0))) {
-        pose = gsr::core::render_from_freed(predicted->pan_rad, predicted->tilt_rad,
-                                            predicted->roll_rad, predicted->x_m,
-                                            predicted->y_m, predicted->z_m);
-        if (lens) {
-          const float fy = gsr::tracking::focal_px_from_mm(
-              lens->focal_mm(predicted->zoom_raw), options.sensor_height_mm,
-              options.height);
-          intr.fx = fy;  // square pixels
-          intr.fy = fy;
+      if (fresh) {
+        if (const auto predicted = predictor->predict(
+                now_us + static_cast<std::uint64_t>(latency_us > 0 ? latency_us : 0))) {
+          pose = gsr::core::render_from_freed(predicted->pan_rad, predicted->tilt_rad,
+                                              predicted->roll_rad, predicted->x_m,
+                                              predicted->y_m, predicted->z_m);
+          if (lens) {
+            const float fy = gsr::tracking::focal_px_from_mm(
+                lens->focal_mm(predicted->zoom_raw), options.sensor_height_mm,
+                options.height);
+            intr.fx = fy;  // square pixels
+            intr.fy = fy;
+          }
+          tracked = true;
+          last_tracked_pose = pose;
         }
-        tracked = true;
       }
     }
     if (!tracked) {
+      if (was_tracked) {
+        // Sync the fly camera to where tracking left off so control resumes in place.
+        cam.position = last_tracked_pose.position;
+        const glm::vec3 fwd = gsr::core::forward_world(last_tracked_pose);
+        cam.pitch = std::asin(fwd.y < -1.0f ? -1.0f : (fwd.y > 1.0f ? 1.0f : fwd.y));
+        cam.yaw = std::atan2(-fwd.x, -fwd.z);
+        gsr::log::get("preview")->info("tracking stale — fly camera resumes at the last "
+                                       "tracked pose");
+      }
       handle_input(window, cam, dt, &last_x, &last_y);
       pose = cam.pose();
     }
+    was_tracked = tracked;
 
     gsr::renderer::CameraFrame frame;
     // The renderer works in the splats' own space: compose the world->view transform

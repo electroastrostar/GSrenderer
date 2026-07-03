@@ -58,6 +58,14 @@ UDP and can act as a handheld tracker against the same listener port.
   option --freed-port" was the stale Phase 2 exe after that build failure. Fix:
   <string> in preview.hpp + <memory> (make_unique) in preview.cpp. 77/77 both builds.
 
+- Phase 3, PR #4 iteration 2 — operator report on §3: (a) orbit veers off-axis after a
+  while — serialize CLAMPED angles at the int24 ±256° wire limit while the simulator's
+  orbit pan grows unboundedly, freezing rotation as position kept moving; fix: angles
+  now WRAP into [-180,180) at serialize (positions still clamp) + wrap round-trip tests.
+  (b) no manual control after stopping the simulator — predictor's stale freeze holds
+  forever; fix: preview treats tracking >0.5 s without packets as gone and hands the
+  fly camera the last tracked pose (position + derived yaw/pitch). 78/78 both builds.
+
 ## In Progress
 
-- (Phase 3 PR #4 awaiting operator re-verification from §1, then merge → Phase 4.)
+- (Phase 3 PR #4 awaiting operator re-verification of §3 items 4–5, then §4–§5 → merge.)

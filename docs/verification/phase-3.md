@@ -80,14 +80,17 @@ build\tools\freed_simulator\Release\freed_simulator.exe --port 8001 --profile or
 ./build/tools/freed_simulator/freed_simulator --port 8001 --profile orbit --radius 4 --height 1.5
 ```
 
-✅ **PASS — all four:**
+✅ **PASS — all five:**
 1. The moment the simulator starts, the camera **snaps to the orbit** and circles the
    cube, always facing it, completing a revolution every ~12 s.
 2. The motion is **smooth** — no stutter, no jumps, no frozen frames (plan acceptance:
    "smooth orbit with no visible stutter").
 3. The title bar shows `trk 50 Hz` (±3) with `ok:` climbing and `rej:0`.
-4. Stop the simulator (Ctrl+C in terminal 2): the camera freezes in place (stale-data
-   hold) and fly controls work again after ~0.2 s.
+4. Let the orbit run for **at least two full revolutions** (~25 s) — it must stay locked
+   on the cube the whole time (this specifically covers the ±180° pan wrap).
+5. Stop the simulator (Ctrl+C in terminal 2): after ~0.5 s a log line says
+   `tracking stale — fly camera resumes at the last tracked pose`, and WASD/mouse
+   control works again from right where the camera stopped.
 
 ❌ **FAIL:** stutter/jumping (note the fps + trk numbers), the camera facing away from
 the cube or orbiting off-axis (that's a `render_from_freed` sign bug — say which way it

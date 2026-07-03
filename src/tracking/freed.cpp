@@ -45,7 +45,14 @@ float wire_angle_to_rad(std::int32_t raw) {
 float wire_pos_to_m(std::int32_t raw) { return static_cast<float>(raw) * kMmPerUnit / 1000.0f; }
 
 std::int64_t rad_to_wire_angle(float rad) {
-  return static_cast<std::int64_t>(std::llround(static_cast<double>(rad) * 180.0 / kPi * 32768.0));
+  // Angles are periodic: wrap into [-180, 180) instead of clamping at the int24 range
+  // (±256°). A continuously growing angle — e.g. the simulator's endless orbit pan —
+  // would otherwise hit the clamp and freeze while positions keep moving (PR #4).
+  double deg = static_cast<double>(rad) * 180.0 / kPi;
+  deg = std::fmod(deg + 180.0, 360.0);
+  if (deg < 0.0) deg += 360.0;
+  deg -= 180.0;
+  return static_cast<std::int64_t>(std::llround(deg * 32768.0));
 }
 
 std::int64_t m_to_wire_pos(float m) {
