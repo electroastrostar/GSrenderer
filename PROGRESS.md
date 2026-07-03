@@ -49,11 +49,14 @@ UDP and can act as a handheld tracker against the same listener port.
   remain until first packet; HUD/log gain `trk <rate>Hz ok:<n> rej:<n>`. Host + CUDA
   builds clean, 77/77.
 
+- Phase 3 wrap-up — `docs/verification/phase-3.md` written (all steps simulator-driven,
+  two-terminal walkthrough, optional iOS VirtualProductionCamera section, not a merge
+  gate). Fresh out-of-tree build: 0 warnings, 77/77 tests. PR opened.
+
 ## In Progress
 
-- **Phase 3 wrap-up** — `docs/verification/phase-3.md` (simulator-driven; optional
-  iOS FreeD app section), acceptance build, PR.
-  - Exact next step: verification doc, fresh build, open PR.
+- (nothing — Phase 3 complete; awaiting operator verification per
+  `docs/verification/phase-3.md`, then merge → Phase 4 off-axis frustum.)
 - Phase 3, integration — preview gains `--freed-port` tracked-camera mode +
   `--latency-ms`; smooth orbit from simulator = acceptance.
 - Phase 3 wrap-up — `docs/verification/phase-3.md` (simulator-based, no tracker
