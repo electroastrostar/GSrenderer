@@ -4,6 +4,9 @@
 #include "core/log.hpp"
 #include "core/transforms.hpp"
 #include "loader/splat_data.hpp"
+#include "tracking/lens_table.hpp"
+#include "tracking/pose_predictor.hpp"
+#include "tracking/udp_listener.hpp"
 
 #include <GLFW/glfw3.h>
 #include <cuda_gl_interop.h>
@@ -144,8 +147,29 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
   gsr::renderer::SplatRenderer renderer(data, config);
 
   const float fov = options.fov_y_rad > 0.0f ? options.fov_y_rad : glm::radians(60.0f);
-  const auto intr =
+  const auto base_intr =
       gsr::core::intrinsics_from_fov(fov, options.width, options.height, 0.1f, 1000.0f);
+
+  // Tracked-camera mode: listener feeds the predictor; the render loop queries
+  // predict(now + latency) and converts through render_from_freed.
+  std::unique_ptr<gsr::tracking::PosePredictor> predictor;
+  std::unique_ptr<gsr::tracking::FreedListener> listener;
+  std::unique_ptr<gsr::tracking::LensTable> lens;
+  if (options.freed_port >= 0) {
+    predictor = std::make_unique<gsr::tracking::PosePredictor>();
+    listener = std::make_unique<gsr::tracking::FreedListener>(
+        static_cast<std::uint16_t>(options.freed_port),
+        [p = predictor.get()](const gsr::tracking::TimedPose& pose) { p->push(pose); });
+    if (!options.lens_csv.empty()) {
+      lens = std::make_unique<gsr::tracking::LensTable>(
+          gsr::tracking::LensTable::from_csv(options.lens_csv));
+      log->info("lens table {} loaded; sensor height {:.1f} mm", options.lens_csv,
+                options.sensor_height_mm);
+    }
+    log->info("tracked-camera mode: FreeD on UDP {} (latency offset {:.1f} ms{})",
+              listener->port(), options.latency_ms,
+              lens ? ", lens table" : ", fixed intrinsics");
+  }
 
   if (glfwInit() != GLFW_TRUE) throw std::runtime_error("preview: glfwInit failed");
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);  // fixed-size render target this phase
@@ -219,9 +243,35 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
     const double now = glfwGetTime();
     const float dt = static_cast<float>(now - prev_time);
     prev_time = now;
-    handle_input(window, cam, dt, &last_x, &last_y);
 
-    const auto pose = cam.pose();
+    // Tracker drives the camera when data is flowing; fly controls otherwise.
+    gsr::core::CameraPose pose;
+    gsr::core::Intrinsics intr = base_intr;
+    bool tracked = false;
+    if (predictor) {
+      const auto latency_us =
+          static_cast<std::int64_t>(static_cast<double>(options.latency_ms) * 1000.0);
+      if (const auto predicted =
+              predictor->predict(gsr::log::mono_us() + static_cast<std::uint64_t>(
+                                                           latency_us > 0 ? latency_us : 0))) {
+        pose = gsr::core::render_from_freed(predicted->pan_rad, predicted->tilt_rad,
+                                            predicted->roll_rad, predicted->x_m,
+                                            predicted->y_m, predicted->z_m);
+        if (lens) {
+          const float fy = gsr::tracking::focal_px_from_mm(
+              lens->focal_mm(predicted->zoom_raw), options.sensor_height_mm,
+              options.height);
+          intr.fx = fy;  // square pixels
+          intr.fy = fy;
+        }
+        tracked = true;
+      }
+    }
+    if (!tracked) {
+      handle_input(window, cam, dt, &last_x, &last_y);
+      pose = cam.pose();
+    }
+
     gsr::renderer::CameraFrame frame;
     // The renderer works in the splats' own space: compose the world->view transform
     // with world_from_asset, and hand it the camera position in asset space (SH origin).
@@ -284,20 +334,28 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
     // HUD in the title 4x/s; frame-stamped log line 1x/s (plan Phase 2 task 4).
     if (now - hud_time > 0.25 && hud_frames > 0) {
       const float inv = 1.0f / static_cast<float>(hud_frames);
-      char title[256];
+      char tracking_hud[96] = "";
+      if (listener) {
+        const auto ts = listener->stats();
+        std::snprintf(tracking_hud, sizeof tracking_hud,
+                      " | trk %.0f Hz ok:%llu rej:%llu", ts.packet_rate_hz,
+                      static_cast<unsigned long long>(ts.packets_ok),
+                      static_cast<unsigned long long>(ts.packets_rejected));
+      }
+      char title[352];
       std::snprintf(title, sizeof title,
                     "splatcast — %.1f fps | cull+proj %.2f ms | sort %.2f ms | blend %.2f "
-                    "ms | GPU total %.2f ms | %u pairs | spd %.2f",
+                    "ms | GPU total %.2f ms | %u pairs | spd %.2f%s",
                     hud_frames / static_cast<float>(now - hud_time), acc.preprocess_ms * inv,
                     acc.sort_ms * inv, acc.blend_ms * inv, acc.total_ms * inv,
-                    acc.pairs_rendered, cam.base_speed * cam.speed_scale);
+                    acc.pairs_rendered, cam.base_speed * cam.speed_scale, tracking_hud);
       glfwSetWindowTitle(window, title);
       if (now - log_time > 1.0) {
         log->info("{:.1f} fps | preprocess {:.2f} ms | sort {:.2f} ms | blend {:.2f} ms | "
-                  "gpu {:.2f} ms | {} pairs",
+                  "gpu {:.2f} ms | {} pairs{}",
                   hud_frames / static_cast<float>(now - hud_time), acc.preprocess_ms * inv,
                   acc.sort_ms * inv, acc.blend_ms * inv, acc.total_ms * inv,
-                  acc.pairs_rendered);
+                  acc.pairs_rendered, tracking_hud);
         log_time = now;
       }
       hud_time = now;

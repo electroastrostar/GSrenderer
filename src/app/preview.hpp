@@ -20,6 +20,13 @@ struct PreviewOptions {
   // world_from_asset flip so it appears upright (same default as SuperSplat).
   // --no-flip disables this for assets exported already y-up.
   bool flip_scene = true;
+
+  // Tracked-camera mode (Phase 3): >= 0 listens for FreeD D1 on this UDP port and the
+  // tracker drives the camera (fly controls stay active until the first packet).
+  int freed_port = -1;
+  float latency_ms = 0.0f;        // prediction offset: predict(now + latency)
+  std::string lens_csv;           // zoom->focal table; empty = fixed FOV intrinsics
+  float sensor_height_mm = 24.0f; // sensor height matching the lens table's focal values
 };
 
 // Blocks until the window closes. Returns process exit code (0 = clean run).

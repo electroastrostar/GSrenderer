@@ -43,12 +43,17 @@ UDP and can act as a handheld tracker against the same listener port.
   "faces the origin" consistency test; architecture.md table + inventory updated.
   77/77 green.
 
+- Phase 3, integration — tracked-camera preview: `--freed-port`/`--latency-ms`/
+  `--lens-file`/`--sensor-height-mm`; listener → predictor → render_from_freed →
+  renderer; per-frame zoom→focal intrinsics when a lens table is loaded; fly controls
+  remain until first packet; HUD/log gain `trk <rate>Hz ok:<n> rej:<n>`. Host + CUDA
+  builds clean, 77/77.
+
 ## In Progress
 
-- **Phase 3, integration — tracked-camera preview**: `--freed-port`, `--latency-ms`,
-  `--lens-file`/`--sensor-height-mm` wiring listener → predictor → render_from_freed →
-  renderer; tracking HUD additions (rate, rejected).
-  - Exact next step: preview/app changes; CUDA-build compile check; commit.
+- **Phase 3 wrap-up** — `docs/verification/phase-3.md` (simulator-driven; optional
+  iOS FreeD app section), acceptance build, PR.
+  - Exact next step: verification doc, fresh build, open PR.
 - Phase 3, integration — preview gains `--freed-port` tracked-camera mode +
   `--latency-ms`; smooth orbit from simulator = acceptance.
 - Phase 3 wrap-up — `docs/verification/phase-3.md` (simulator-based, no tracker
