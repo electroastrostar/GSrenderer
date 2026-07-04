@@ -180,5 +180,6 @@ required boxes (not §6) are green.
 - [ ] Build warning-clean; `ctest` 78/78 (§1–2)
 - [ ] Simulator orbit: camera circles the cube facing it, smooth, `trk ~50 Hz`, `rej:0`;
       freeze-then-fly on simulator stop (§3)
-- [ ] `--latency-ms 400` visibly leads the 0 ms pose (§4)
+- [ ] `]`/`[` latency steps jump the camera along the orbit; `lead` tracks `lat`
+      (~12° at 400 ms) and returns to ~0 (§4)
 - [ ] Handheld sway visible; lens table loads and tightens the FOV (§5)
