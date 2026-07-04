@@ -23,6 +23,15 @@ struct PreviewOptions {
   // --no-flip disables this for assets exported already y-up.
   bool flip_scene = true;
 
+  // Mode B overscan (Phase 4): fraction of the base size padded on all sides; the
+  // window/output becomes the overscanned size and the base image is its exact center
+  // crop (core/camera.hpp with_overscan).
+  float overscan_fraction = 0.0f;
+
+  // Stage alignment (Phase 4): applied to tracked poses via world_from_stage.
+  float stage_yaw_rad = 0.0f;
+  glm::vec3 stage_offset{0.0f};
+
   // Tracked-camera mode (Phase 3): >= 0 listens for FreeD D1 on this UDP port and the
   // tracker drives the camera (fly controls stay active until the first packet).
   int freed_port = -1;

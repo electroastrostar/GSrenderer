@@ -7,6 +7,13 @@ FetchContent_Declare(spdlog
   GIT_SHALLOW    TRUE)
 FetchContent_MakeAvailable(spdlog)
 
+# Run-config parsing (plan §4: single TOML config per run), header-only
+FetchContent_Declare(tomlplusplus
+  GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
+  GIT_TAG        v3.4.0
+  GIT_SHALLOW    TRUE)
+FetchContent_MakeAvailable(tomlplusplus)
+
 # Math (host + CUDA device), see docs/decisions/0001-glm-math-library.md
 FetchContent_Declare(glm
   GIT_REPOSITORY https://github.com/g-truc/glm.git

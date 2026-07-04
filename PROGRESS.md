@@ -21,15 +21,23 @@ plus renderer-only pixel checks (overscan crop measurement) that don't.
   96/54-px fixtures + projection superset property test) and Task 4 transform —
   `world_from_stage` (yaw about +Y then offset; hand-checked R_y(90°) fixture). 83/83.
 
+- Phase 4, config + wiring — TOML run config (toml++ v3.4.0, `gsr_config` lib,
+  `configs/example_run.toml`, 4 tests: overlay/defaults/example/malformed); CLI
+  reworked: `--config` two-pass with flag overrides, `--overscan`, `--stage-yaw-deg`,
+  `--stage-offset X,Y,Z`; preview renders the overscanned target (window = overscan
+  size, base = exact center crop; lens fy still maps to base height) and applies
+  world_from_stage to tracked poses. 86/86 both builds.
+
 ## In Progress
 
-- **Phase 4, app wiring + TOML config**: `--overscan PCT`, `--stage-yaw-deg`,
-  `--stage-offset x,y,z` CLI; `--config run.toml` (toml++ pinned, plan §4 default)
-  with CLI overrides; config tests.
-  - Exact next step: toml++ dep + src/app/config module + tests + preview wiring.
-- Phase 4, config — TOML run config (toml++ pinned via FetchContent, per plan §4
-  default): asset/size/fov/tracking/lens/overscan/stage-offset; CLI overrides; tests.
-- Phase 4, Task 3 — explicit SH-origin test: identical view matrix, different
+- **Phase 4, Task 3 + fiducial** — [gpu] SH-origin test (same view matrix, different
+  camera_position_world → colors change) and `tools/make_fiducial_ply.py` → committed
+  grid fiducial asset for line-up/overscan measurement.
+  - Exact next step: implement both; commit.
+
+## Next
+
+- Phase 4, Task 3 (old) — explicit SH-origin test: identical view matrix, different
   camera_position_world → colors change ([gpu] test; field independence proves the
   physical-camera origin is what SH uses).
 - Phase 4, fiducial — `tools/make_fiducial_ply.py` → committed grid/checkerboard asset

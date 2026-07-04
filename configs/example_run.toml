@@ -1,0 +1,27 @@
+# splatcast run configuration (plan §4: one TOML file per run).
+# CLI flags override anything set here. All fields optional; defaults shown.
+
+asset = "assets/fixtures/cube_deg3.ply"
+
+[output]
+width = 1920
+height = 1080
+fov_deg = 60.0        # used when no lens table is active
+vsync = false
+overscan_pct = 0.0    # Mode B: 10.0 renders 10% larger; base image = exact center crop
+
+[render]
+sh_clamp = -1         # -1 = full SH degree from the asset
+flip_scene = true     # COLMAP y-down -> y-up flip (SuperSplat-compatible default)
+
+[tracking]
+freed_port = -1       # -1 = off; StarTracker default is 8001
+latency_ms = 0.0
+
+[lens]
+file = ""             # zoom->focal CSV (see example_lens.csv); "" = fixed fov_deg
+sensor_height_mm = 24.0
+
+[stage]               # tracker origin -> scene origin alignment (world_from_stage)
+yaw_deg = 0.0         # about world up, +CCW seen from above
+offset_m = [0.0, 0.0, 0.0]
