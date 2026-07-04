@@ -152,7 +152,11 @@ the 60° default FOV run in §3.
 ## 6. OPTIONAL — phone as a live FreeD tracker
 
 If you have an iPhone/iPad: the App Store app **"VirtualProductionCamera"** streams
-ARKit tracking as FreeD over UDP. Phone and PC must be on the same network:
+ARKit tracking as FreeD over UDP. **Android:** no suitable free app exists — build the
+companion app instead using the ready-made prompt brief in
+`docs/android-freed-app-brief.md` (it pins this repo's exact wire format and test bytes;
+the renderer command below is the same either way). Phone and PC must be on the same
+network:
 
 1. Find your PC's IP: `ipconfig` (Windows, "IPv4 Address") / `ip addr` (Linux).
 2. In the app, set the target IP to your PC and port to `8001`, protocol FreeD, and start.
