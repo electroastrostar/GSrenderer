@@ -115,3 +115,49 @@ TEST_CASE("clip_from_world composes view and projection", "[core][camera]") {
   CHECK(ndc.z > -1.0f);
   CHECK(ndc.z < 1.0f);
 }
+
+// ---- Mode B overscan (Phase 4) --------------------------------------------------------
+
+// Hand-checked: 10% overscan on 1920x1080 pads 96/54 px per side -> 2112x1188,
+// principal point shifts by exactly the pad.
+TEST_CASE("with_overscan pads the image and shifts the principal point",
+          "[core][camera][overscan]") {
+  const auto base =
+      gsr::core::intrinsics_from_fov(glm::radians(60.0f), 1920, 1080, 0.1f, 100.0f);
+  const auto over = gsr::core::with_overscan(base, 0.10f);
+  CHECK(over.width == 2112);
+  CHECK(over.height == 1188);
+  CHECK(over.cx == Approx(base.cx + 96.0f));
+  CHECK(over.cy == Approx(base.cy + 54.0f));
+  CHECK(over.fx == Approx(base.fx));  // rays unchanged
+  CHECK(over.fy == Approx(base.fy));
+
+  const auto identity = gsr::core::with_overscan(base, 0.0f);
+  CHECK(identity.width == base.width);
+  CHECK(identity.cx == Approx(base.cx));
+  CHECK_THROWS_AS(gsr::core::with_overscan(base, -0.1f), std::invalid_argument);
+}
+
+// The crop contract: any world point lands at the SAME pixel + pad offset. Verified via
+// the projection matrices (pixel = (ndc*0.5 + 0.5) * size).
+TEST_CASE("overscan render is a superset: base image is the exact center crop",
+          "[core][camera][overscan]") {
+  const auto base =
+      gsr::core::intrinsics_from_fov(glm::radians(60.0f), 1920, 1080, 0.1f, 100.0f);
+  const auto over = gsr::core::with_overscan(base, 0.10f);
+  const glm::mat4 proj_base = gsr::core::clip_from_view(base);
+  const glm::mat4 proj_over = gsr::core::clip_from_view(over);
+
+  for (const glm::vec3 p : {glm::vec3{0.5f, -0.3f, -4.0f}, glm::vec3{-2.0f, 1.0f, -10.0f},
+                            glm::vec3{0.0f, 0.0f, -1.0f}}) {
+    const glm::vec3 ndc_base = project_to_ndc(proj_base, p);
+    const glm::vec3 ndc_over = project_to_ndc(proj_over, p);
+    const float u_base = (ndc_base.x * 0.5f + 0.5f) * 1920.0f;
+    const float u_over = (ndc_over.x * 0.5f + 0.5f) * 2112.0f;
+    // Image y: NDC +y is up, pixel v is down.
+    const float v_base = (0.5f - ndc_base.y * 0.5f) * 1080.0f;
+    const float v_over = (0.5f - ndc_over.y * 0.5f) * 1188.0f;
+    CHECK(u_over == Approx(u_base + 96.0f).margin(1e-2));
+    CHECK(v_over == Approx(v_base + 54.0f).margin(1e-2));
+  }
+}

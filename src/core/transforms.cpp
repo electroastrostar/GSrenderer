@@ -36,4 +36,13 @@ CameraPose render_from_freed(float pan_rad, float tilt_rad, float roll_rad, floa
   return pose;
 }
 
+CameraPose world_from_stage(const CameraPose& stage_pose, float yaw_rad,
+                            const glm::vec3& offset_m) {
+  const glm::quat yaw = glm::angleAxis(yaw_rad, glm::vec3(0.0f, 1.0f, 0.0f));
+  CameraPose out;
+  out.position = yaw * stage_pose.position + offset_m;
+  out.orientation = yaw * stage_pose.orientation;
+  return out;
+}
+
 }  // namespace gsr::core

@@ -33,4 +33,13 @@ glm::vec3 asset_from_world(const glm::vec3& p_world);
 CameraPose render_from_freed(float pan_rad, float tilt_rad, float roll_rad, float x_m,
                              float y_m, float z_m);
 
+// Stage alignment (plan §Phase 4 task 4): the tracker's origin rarely coincides with the
+// splat scene's origin. "Stage space" is where tracked poses land after render_from_freed;
+// this maps them into render world: first a yaw about the world up axis (+Y, radians,
+// positive = counterclockwise seen from above), then a translation (meters). Config
+// supplies the two values (stage.yaw_deg / stage.offset_m — converted at the I/O
+// boundary). Identity (0, {0,0,0}) leaves poses untouched.
+CameraPose world_from_stage(const CameraPose& stage_pose, float yaw_rad,
+                            const glm::vec3& offset_m);
+
 }  // namespace gsr::core

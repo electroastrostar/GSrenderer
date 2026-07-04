@@ -118,3 +118,32 @@ TEST_CASE("render_from_freed: simulator orbit poses face the origin",
     CHECK(fwd.z == Approx(expected.z).margin(1e-4));
   }
 }
+
+// ---- world_from_stage (Phase 4 stage alignment) ---------------------------------------
+
+TEST_CASE("world_from_stage: identity alignment is a no-op", "[core][transforms][stage]") {
+  gsr::core::CameraPose pose;
+  pose.position = {1.0f, 2.0f, 3.0f};
+  const auto out = gsr::core::world_from_stage(pose, 0.0f, glm::vec3(0.0f));
+  CHECK(out.position.x == Approx(1.0f));
+  CHECK(out.position.y == Approx(2.0f));
+  CHECK(out.position.z == Approx(3.0f));
+}
+
+// Hand-checked with R_y(90°) = [[0,0,1],[0,1,0],[-1,0,0]]: position (1,0,0) rotates to
+// (0,0,-1) and then translates by the offset; the identity camera's forward (0,0,-1)
+// rotates to (-1,0,0), so the camera faces -X afterwards.
+TEST_CASE("world_from_stage: yaw then offset, hand-checked", "[core][transforms][stage]") {
+  gsr::core::CameraPose pose;  // at (1,0,0) facing -Z (identity orientation)
+  pose.position = {1.0f, 0.0f, 0.0f};
+
+  const float yaw = glm::half_pi<float>();
+  const auto out = gsr::core::world_from_stage(pose, yaw, {10.0f, 0.5f, -2.0f});
+  CHECK(out.position.x == Approx(10.0f).margin(1e-5));   // (1,0,0)->(0,0,-1), +offset
+  CHECK(out.position.y == Approx(0.5f).margin(1e-5));
+  CHECK(out.position.z == Approx(-3.0f).epsilon(1e-5));
+
+  const auto fwd = gsr::core::forward_world(out);
+  CHECK(fwd.x == Approx(-1.0f).epsilon(1e-5));  // -Z rotated 90° CCW-from-above -> -X
+  CHECK(fwd.z == Approx(0.0f).margin(1e-5));
+}

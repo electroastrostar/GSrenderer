@@ -17,18 +17,16 @@ plus renderer-only pixel checks (overscan crop measurement) that don't.
   Phase 3 closed after 4 verification iterations incl. wire-angle wrap, tracking-stale
   handback, live latency stepping with measured lead, extrapolation-horizon fix).
 
+- Phase 4, Tasks 1+2 math — `with_overscan` (exact-center-crop contract, hand-checked
+  96/54-px fixtures + projection superset property test) and Task 4 transform —
+  `world_from_stage` (yaw about +Y then offset; hand-checked R_y(90°) fixture). 83/83.
+
 ## In Progress
 
-- **Phase 4, Task 1+2a — overscan-capable intrinsics (Mode A/B)**: named
-  `with_overscan(Intrinsics, fraction)` in core/camera producing the expanded
-  asymmetric frustum (same fx/fy/optical center, wider image); CLI `--overscan PCT`;
-  hand-checked tests (pixel-offset fixtures).
-  - Exact next step: implement + tests; commit.
-
-## Next
-
-- Phase 4, Task 4 — stage alignment: `world_from_stage` pose transform (yaw about up +
-  offset, meters) in core/transforms with hand-checked tests; config entries.
+- **Phase 4, app wiring + TOML config**: `--overscan PCT`, `--stage-yaw-deg`,
+  `--stage-offset x,y,z` CLI; `--config run.toml` (toml++ pinned, plan §4 default)
+  with CLI overrides; config tests.
+  - Exact next step: toml++ dep + src/app/config module + tests + preview wiring.
 - Phase 4, config — TOML run config (toml++ pinned via FetchContent, per plan §4
   default): asset/size/fov/tracking/lens/overscan/stage-offset; CLI overrides; tests.
 - Phase 4, Task 3 — explicit SH-origin test: identical view matrix, different
