@@ -66,6 +66,14 @@ UDP and can act as a handheld tracker against the same listener port.
   forever; fix: preview treats tracking >0.5 s without packets as gone and hands the
   fly camera the last tracked pose (position + derived yaw/pitch). 78/78 both builds.
 
+- Phase 3, PR #4 iteration 3 — operator feedback: §4 latency test was unjudgeable
+  (compare-against-memory while the scene keeps orbiting). Fix: latency offset is now
+  live-adjustable in the preview ([ / ] keys, 50 ms steps, logged) and the HUD shows
+  `lat <ms> lead <deg>` — the measured pan lead of the predicted pose vs the newest
+  raw packet. §4 rewritten as a self-referenced 3-check procedure (jump per press,
+  lead ≈ 1.5°/50 ms at the 12 s orbit, returns to 0). Also previews the Phase 7
+  set-latency-offset control. 78/78 both builds.
+
 ## In Progress
 
-- (Phase 3 PR #4 awaiting operator re-verification of §3 items 4–5, then §4–§5 → merge.)
+- (Phase 3 PR #4 awaiting operator re-verification of §3–§5, then merge.)

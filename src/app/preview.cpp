@@ -230,6 +230,14 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
 
   bool was_tracked = false;
   gsr::core::CameraPose last_tracked_pose;
+  // Live-adjustable prediction offset ([ / ] keys) + measured lead for the HUD: the
+  // pan difference between the predicted pose and the newest raw packet, in degrees.
+  // Live adjustment makes the latency acceptance test self-referenced (the camera
+  // visibly jumps along the orbit on each step) instead of relying on operator memory
+  // across restarts (PR #4 feedback). Also previews the Phase 7 set-latency control.
+  float latency_ms = options.latency_ms;
+  float lead_deg = 0.0f;
+  bool bracket_left_was = false, bracket_right_was = false;
   double prev_time = glfwGetTime();
   double hud_time = prev_time;
   double log_time = prev_time;
@@ -241,6 +249,18 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
     glfwPollEvents();
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
       glfwSetWindowShouldClose(window, GLFW_TRUE);
+    }
+    if (predictor) {  // [ / ] step the prediction offset by 50 ms (edge-triggered)
+      const bool lb = glfwGetKey(window, GLFW_KEY_LEFT_BRACKET) == GLFW_PRESS;
+      const bool rb = glfwGetKey(window, GLFW_KEY_RIGHT_BRACKET) == GLFW_PRESS;
+      const float before = latency_ms;
+      if (rb && !bracket_right_was) latency_ms = std::min(2000.0f, latency_ms + 50.0f);
+      if (lb && !bracket_left_was) latency_ms = std::max(0.0f, latency_ms - 50.0f);
+      if (latency_ms != before) {
+        log->info("prediction latency offset -> {:.0f} ms", latency_ms);
+      }
+      bracket_left_was = lb;
+      bracket_right_was = rb;
     }
 
     const double now = glfwGetTime();
@@ -260,7 +280,7 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
       const bool fresh =
           newest.has_value() && now_us - newest->t_mono_us < kTrackingStaleUs;
       const auto latency_us =
-          static_cast<std::int64_t>(static_cast<double>(options.latency_ms) * 1000.0);
+          static_cast<std::int64_t>(static_cast<double>(latency_ms) * 1000.0);
       if (fresh) {
         if (const auto predicted = predictor->predict(
                 now_us + static_cast<std::uint64_t>(latency_us > 0 ? latency_us : 0))) {
@@ -276,6 +296,11 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
           }
           tracked = true;
           last_tracked_pose = pose;
+          // Measured prediction lead vs the newest raw packet (wrapped pan delta).
+          float delta = predicted->pan_rad - newest->pose.pan_rad;
+          while (delta >= glm::pi<float>()) delta -= 2.0f * glm::pi<float>();
+          while (delta < -glm::pi<float>()) delta += 2.0f * glm::pi<float>();
+          lead_deg = glm::degrees(delta);
         }
       }
     }
@@ -356,13 +381,14 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
     // HUD in the title 4x/s; frame-stamped log line 1x/s (plan Phase 2 task 4).
     if (now - hud_time > 0.25 && hud_frames > 0) {
       const float inv = 1.0f / static_cast<float>(hud_frames);
-      char tracking_hud[96] = "";
+      char tracking_hud[128] = "";
       if (listener) {
         const auto ts = listener->stats();
         std::snprintf(tracking_hud, sizeof tracking_hud,
-                      " | trk %.0f Hz ok:%llu rej:%llu", ts.packet_rate_hz,
-                      static_cast<unsigned long long>(ts.packets_ok),
-                      static_cast<unsigned long long>(ts.packets_rejected));
+                      " | trk %.0f Hz ok:%llu rej:%llu | lat %.0fms lead %+.1fdeg",
+                      ts.packet_rate_hz, static_cast<unsigned long long>(ts.packets_ok),
+                      static_cast<unsigned long long>(ts.packets_rejected), latency_ms,
+                      lead_deg);
       }
       char title[352];
       std::snprintf(title, sizeof title,

@@ -98,24 +98,28 @@ faces), or `rej:` counting up (packet corruption — paste both terminals' outpu
 
 ## 4. Latency offset shifts the pose (plan acceptance)
 
-Keep the simulator running. Quit the renderer (Esc) and relaunch it with a large,
-obvious prediction offset:
+No restart needed — the offset is **live-adjustable** so you compare against what you're
+looking at, not against memory. With the §3 orbit still running and the renderer window
+focused:
 
-```
-:: Windows
-build\src\app\Release\splatcast.exe assets\fixtures\cube_deg3.ply --freed-port 8001 --latency-ms 400
-```
+1. Watch the title bar: it shows `lat 0ms lead +0.0deg`. The `lead` number is the
+   renderer's own measurement of how far the predicted pose runs ahead of the newest
+   raw packet.
+2. Press **`]` (right bracket) eight times** — each press adds 50 ms of prediction
+   (logged in the terminal too).
+3. Press **`[`** to step back down to 0.
 
-```bash
-# Linux
-./build/src/app/splatcast assets/fixtures/cube_deg3.ply --freed-port 8001 --latency-ms 400
-```
+✅ **PASS — all three:**
+1. Every `]` press makes the camera **visibly jump forward along the orbit**, instantly
+   (and `[` jumps it back). That jump IS the latency offset shifting the pose.
+2. The `lead` readout climbs with each press — at the default 12 s orbit each 50 ms
+   step adds **~1.5°**, so 8 presses ≈ `lat 400ms lead +12.0deg` (±0.5°).
+3. Back at `lat 0ms`, `lead` returns to ~+0.0deg.
 
-✅ **PASS:** the orbit still runs smoothly but the camera rides **visibly ahead** of
-where it just was at the same clock time — with a 12 s revolution, 400 ms is a clear
-~12° lead. Try `--latency-ms 0` vs `--latency-ms 400` back-to-back; the pose shift must
-be obvious. (Real stage values will be 10–80 ms; 400 is for visibility.)
-❌ **FAIL:** no visible difference between 0 and 400 ms.
+(`--latency-ms N` still sets the starting value — that's what a config will pin on
+stage, where real values are 10–80 ms.)
+❌ **FAIL:** presses don't move the camera, or `lead` doesn't track `lat` (paste the
+title-bar line).
 
 ## 5. Handheld profile + lens table
 
