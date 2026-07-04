@@ -24,6 +24,10 @@ void print_usage() {
                "  --sh-clamp N    clamp SH evaluation degree 0..3 (default: asset degree)\n"
                "  --vsync         lock preview to the display refresh (default off)\n"
                "  --no-flip       don't apply the COLMAP y-down -> y-up scene flip\n"
+               "  --freed-port N  listen for FreeD tracking on UDP port N (e.g. 8001)\n"
+               "  --latency-ms F  tracking prediction offset in milliseconds\n"
+               "  --lens-file P   zoom->focal CSV (see configs/example_lens.csv)\n"
+               "  --sensor-height-mm F  sensor height for the lens table (default 24)\n"
                "Runs the Phase 2 debug preview (requires a CUDA build).\n");
 }
 
@@ -35,6 +39,10 @@ struct CliOptions {
   int sh_clamp = -1;
   bool vsync = false;
   bool flip_scene = true;
+  int freed_port = -1;
+  float latency_ms = 0.0f;
+  std::string lens_file;
+  float sensor_height_mm = 24.0f;
 };
 
 bool parse_cli(int argc, char** argv, CliOptions* out) {
@@ -68,6 +76,22 @@ bool parse_cli(int argc, char** argv, CliOptions* out) {
       out->vsync = true;
     } else if (std::strcmp(argv[i], "--no-flip") == 0) {
       out->flip_scene = false;
+    } else if (std::strcmp(argv[i], "--freed-port") == 0) {
+      const char* v = need_value("--freed-port");
+      if (v == nullptr) return false;
+      out->freed_port = std::stoi(v);
+    } else if (std::strcmp(argv[i], "--latency-ms") == 0) {
+      const char* v = need_value("--latency-ms");
+      if (v == nullptr) return false;
+      out->latency_ms = std::stof(v);
+    } else if (std::strcmp(argv[i], "--lens-file") == 0) {
+      const char* v = need_value("--lens-file");
+      if (v == nullptr) return false;
+      out->lens_file = v;
+    } else if (std::strcmp(argv[i], "--sensor-height-mm") == 0) {
+      const char* v = need_value("--sensor-height-mm");
+      if (v == nullptr) return false;
+      out->sensor_height_mm = std::stof(v);
     } else {
       std::fprintf(stderr, "error: unknown option '%s'\n", argv[i]);
       return false;
@@ -103,6 +127,10 @@ int main(int argc, char** argv) {
     options.sh_degree_clamp = cli.sh_clamp;
     options.vsync = cli.vsync;
     options.flip_scene = cli.flip_scene;
+    options.freed_port = cli.freed_port;
+    options.latency_ms = cli.latency_ms;
+    options.lens_csv = cli.lens_file;
+    options.sensor_height_mm = cli.sensor_height_mm;
     const int code = gsr::app::run_preview(data, options);
     gsr::log::shutdown();
     return code;

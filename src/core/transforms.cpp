@@ -22,4 +22,18 @@ glm::vec3 asset_from_world(const glm::vec3& p_world) {
   return {p_world.x, -p_world.y, -p_world.z};
 }
 
+CameraPose render_from_freed(float pan_rad, float tilt_rad, float roll_rad, float x_m,
+                             float y_m, float z_m) {
+  CameraPose pose;
+  // Axis mapping: (x, y, z)_freed -> (-y, z, -x)_render.
+  pose.position = {-y_m, z_m, -x_m};
+  // Pan clockwise-from-above = negative rotation about render +Y (up). Tilt up =
+  // positive rotation about camera-local +X. Roll clockwise-from-behind = negative
+  // rotation about camera-local +Z (the backward axis). Intrinsic order pan->tilt->roll.
+  pose.orientation = glm::angleAxis(-pan_rad, glm::vec3(0, 1, 0)) *
+                     glm::angleAxis(tilt_rad, glm::vec3(1, 0, 0)) *
+                     glm::angleAxis(-roll_rad, glm::vec3(0, 0, 1));
+  return pose;
+}
+
 }  // namespace gsr::core

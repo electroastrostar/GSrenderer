@@ -4,6 +4,9 @@
 #include "core/log.hpp"
 #include "core/transforms.hpp"
 #include "loader/splat_data.hpp"
+#include "tracking/lens_table.hpp"
+#include "tracking/pose_predictor.hpp"
+#include "tracking/udp_listener.hpp"
 
 #include <GLFW/glfw3.h>
 #include <cuda_gl_interop.h>
@@ -14,6 +17,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <memory>
 #include <stdexcept>
 #include <string>
 
@@ -144,8 +148,35 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
   gsr::renderer::SplatRenderer renderer(data, config);
 
   const float fov = options.fov_y_rad > 0.0f ? options.fov_y_rad : glm::radians(60.0f);
-  const auto intr =
+  const auto base_intr =
       gsr::core::intrinsics_from_fov(fov, options.width, options.height, 0.1f, 1000.0f);
+
+  // Tracked-camera mode: listener feeds the predictor; the render loop queries
+  // predict(now + latency) and converts through render_from_freed.
+  std::unique_ptr<gsr::tracking::PosePredictor> predictor;
+  std::unique_ptr<gsr::tracking::FreedListener> listener;
+  std::unique_ptr<gsr::tracking::LensTable> lens;
+  if (options.freed_port >= 0) {
+    predictor = std::make_unique<gsr::tracking::PosePredictor>();
+    // Horizon must cover the intended latency offset plus packet jitter, or the offset
+    // silently caps out at the anti-dropout default (PR #4).
+    predictor->set_max_extrapolation_us(
+        static_cast<std::uint64_t>(options.latency_ms > 0 ? options.latency_ms : 0) *
+            1000 +
+        100'000);
+    listener = std::make_unique<gsr::tracking::FreedListener>(
+        static_cast<std::uint16_t>(options.freed_port),
+        [p = predictor.get()](const gsr::tracking::TimedPose& pose) { p->push(pose); });
+    if (!options.lens_csv.empty()) {
+      lens = std::make_unique<gsr::tracking::LensTable>(
+          gsr::tracking::LensTable::from_csv(options.lens_csv));
+      log->info("lens table {} loaded; sensor height {:.1f} mm", options.lens_csv,
+                options.sensor_height_mm);
+    }
+    log->info("tracked-camera mode: FreeD on UDP {} (latency offset {:.1f} ms{})",
+              listener->port(), options.latency_ms,
+              lens ? ", lens table" : ", fixed intrinsics");
+  }
 
   if (glfwInit() != GLFW_TRUE) throw std::runtime_error("preview: glfwInit failed");
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);  // fixed-size render target this phase
@@ -203,6 +234,16 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
             "Esc quit (fly speed {:.2f} units/s)",
             cam.base_speed);
 
+  bool was_tracked = false;
+  gsr::core::CameraPose last_tracked_pose;
+  // Live-adjustable prediction offset ([ / ] keys) + measured lead for the HUD: the
+  // pan difference between the predicted pose and the newest raw packet, in degrees.
+  // Live adjustment makes the latency acceptance test self-referenced (the camera
+  // visibly jumps along the orbit on each step) instead of relying on operator memory
+  // across restarts (PR #4 feedback). Also previews the Phase 7 set-latency control.
+  float latency_ms = options.latency_ms;
+  float lead_deg = 0.0f;
+  bool bracket_left_was = false, bracket_right_was = false;
   double prev_time = glfwGetTime();
   double hud_time = prev_time;
   double log_time = prev_time;
@@ -215,13 +256,77 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
       glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
+    if (predictor) {  // [ / ] step the prediction offset by 50 ms (edge-triggered)
+      const bool lb = glfwGetKey(window, GLFW_KEY_LEFT_BRACKET) == GLFW_PRESS;
+      const bool rb = glfwGetKey(window, GLFW_KEY_RIGHT_BRACKET) == GLFW_PRESS;
+      const float before = latency_ms;
+      if (rb && !bracket_right_was) latency_ms = std::min(2000.0f, latency_ms + 50.0f);
+      if (lb && !bracket_left_was) latency_ms = std::max(0.0f, latency_ms - 50.0f);
+      if (latency_ms != before) {
+        predictor->set_max_extrapolation_us(
+            static_cast<std::uint64_t>(latency_ms) * 1000 + 100'000);
+        log->info("prediction latency offset -> {:.0f} ms", latency_ms);
+      }
+      bracket_left_was = lb;
+      bracket_right_was = rb;
+    }
 
     const double now = glfwGetTime();
     const float dt = static_cast<float>(now - prev_time);
     prev_time = now;
-    handle_input(window, cam, dt, &last_x, &last_y);
 
-    const auto pose = cam.pose();
+    // Tracker drives the camera while packets are FRESH; on dropout (simulator
+    // stopped, cable pulled) control hands back to the fly camera in place after 0.5 s
+    // instead of freezing forever (PR #4 operator report).
+    gsr::core::CameraPose pose;
+    gsr::core::Intrinsics intr = base_intr;
+    bool tracked = false;
+    if (predictor) {
+      constexpr std::uint64_t kTrackingStaleUs = 500'000;
+      const std::uint64_t now_us = gsr::log::mono_us();
+      const auto newest = listener->latest();
+      const bool fresh =
+          newest.has_value() && now_us - newest->t_mono_us < kTrackingStaleUs;
+      const auto latency_us =
+          static_cast<std::int64_t>(static_cast<double>(latency_ms) * 1000.0);
+      if (fresh) {
+        if (const auto predicted = predictor->predict(
+                now_us + static_cast<std::uint64_t>(latency_us > 0 ? latency_us : 0))) {
+          pose = gsr::core::render_from_freed(predicted->pan_rad, predicted->tilt_rad,
+                                              predicted->roll_rad, predicted->x_m,
+                                              predicted->y_m, predicted->z_m);
+          if (lens) {
+            const float fy = gsr::tracking::focal_px_from_mm(
+                lens->focal_mm(predicted->zoom_raw), options.sensor_height_mm,
+                options.height);
+            intr.fx = fy;  // square pixels
+            intr.fy = fy;
+          }
+          tracked = true;
+          last_tracked_pose = pose;
+          // Measured prediction lead vs the newest raw packet (wrapped pan delta).
+          float delta = predicted->pan_rad - newest->pose.pan_rad;
+          while (delta >= glm::pi<float>()) delta -= 2.0f * glm::pi<float>();
+          while (delta < -glm::pi<float>()) delta += 2.0f * glm::pi<float>();
+          lead_deg = glm::degrees(delta);
+        }
+      }
+    }
+    if (!tracked) {
+      if (was_tracked) {
+        // Sync the fly camera to where tracking left off so control resumes in place.
+        cam.position = last_tracked_pose.position;
+        const glm::vec3 fwd = gsr::core::forward_world(last_tracked_pose);
+        cam.pitch = std::asin(fwd.y < -1.0f ? -1.0f : (fwd.y > 1.0f ? 1.0f : fwd.y));
+        cam.yaw = std::atan2(-fwd.x, -fwd.z);
+        gsr::log::get("preview")->info("tracking stale — fly camera resumes at the last "
+                                       "tracked pose");
+      }
+      handle_input(window, cam, dt, &last_x, &last_y);
+      pose = cam.pose();
+    }
+    was_tracked = tracked;
+
     gsr::renderer::CameraFrame frame;
     // The renderer works in the splats' own space: compose the world->view transform
     // with world_from_asset, and hand it the camera position in asset space (SH origin).
@@ -284,20 +389,29 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
     // HUD in the title 4x/s; frame-stamped log line 1x/s (plan Phase 2 task 4).
     if (now - hud_time > 0.25 && hud_frames > 0) {
       const float inv = 1.0f / static_cast<float>(hud_frames);
-      char title[256];
+      char tracking_hud[128] = "";
+      if (listener) {
+        const auto ts = listener->stats();
+        std::snprintf(tracking_hud, sizeof tracking_hud,
+                      " | trk %.0f Hz ok:%llu rej:%llu | lat %.0fms lead %+.1fdeg",
+                      ts.packet_rate_hz, static_cast<unsigned long long>(ts.packets_ok),
+                      static_cast<unsigned long long>(ts.packets_rejected), latency_ms,
+                      lead_deg);
+      }
+      char title[352];
       std::snprintf(title, sizeof title,
                     "splatcast — %.1f fps | cull+proj %.2f ms | sort %.2f ms | blend %.2f "
-                    "ms | GPU total %.2f ms | %u pairs | spd %.2f",
+                    "ms | GPU total %.2f ms | %u pairs | spd %.2f%s",
                     hud_frames / static_cast<float>(now - hud_time), acc.preprocess_ms * inv,
                     acc.sort_ms * inv, acc.blend_ms * inv, acc.total_ms * inv,
-                    acc.pairs_rendered, cam.base_speed * cam.speed_scale);
+                    acc.pairs_rendered, cam.base_speed * cam.speed_scale, tracking_hud);
       glfwSetWindowTitle(window, title);
       if (now - log_time > 1.0) {
         log->info("{:.1f} fps | preprocess {:.2f} ms | sort {:.2f} ms | blend {:.2f} ms | "
-                  "gpu {:.2f} ms | {} pairs",
+                  "gpu {:.2f} ms | {} pairs{}",
                   hud_frames / static_cast<float>(now - hud_time), acc.preprocess_ms * inv,
                   acc.sort_ms * inv, acc.blend_ms * inv, acc.total_ms * inv,
-                  acc.pairs_rendered);
+                  acc.pairs_rendered, tracking_hud);
         log_time = now;
       }
       hud_time = now;

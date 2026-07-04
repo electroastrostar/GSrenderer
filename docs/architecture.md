@@ -43,7 +43,7 @@ latency-offset. Telemetry: per-frame timings, packet rate, late frames.
 |---|---|---|---|---|---|
 | Splat asset space | right-handed (COLMAP/INRIA) | **−Y** (asset +Y points down) | +Z | scene-dependent scale | Phase 1/2 (confirmed on real assets, PR #3) |
 | Render world space | right-handed | +Y | −Z (camera at identity) | meters* | Phase 2 |
-| FreeD / StarTracker space | TBD (per Mo-Sys docs; verify on stage) | TBD | TBD | mm + degrees on wire | Phase 3 |
+| FreeD / StarTracker space | right-handed | +Z | +X at pan 0 (pan CW-from-above, tilt up, roll CW-from-behind) | mm + degrees on wire (int24 fixed-point) | Phase 3 (`docs/freed-protocol.md`; **verify signs on stage**) |
 | Renderer camera space | right-handed, Y-up, −Z forward | +Y | −Z | meters | Phase 2 |
 | UE5 / nDisplay space | left-handed, Z-up, +X forward, **centimeters** | +Z | +X | cm | UE convention |
 
@@ -58,6 +58,7 @@ hand-checked unit test (see `CLAUDE.md`):
 | Function | From → To | Phase | Test |
 |---|---|---|---|
 | `world_from_asset` / `asset_from_world` (`core/transforms.hpp`) | splat asset ↔ render world (180° about X; SuperSplat-compatible default, `--no-flip` to disable) | 2 | `tests/test_transforms.cpp` |
+| `render_from_freed` (`core/transforms.hpp`) | FreeD/StarTracker → render-world camera pose (freed X→−Z, Y→−X, Z→+Y; pan/tilt/roll per `freed-protocol.md`) | 3 | `tests/test_transforms.cpp` (incl. simulator-orbit consistency) |
 | `view_from_world` (`core/camera.hpp`) | render world → camera view | 2 | `tests/test_camera.cpp` |
 | `clip_from_view` (`core/camera.hpp`) | camera view → clip (off-axis capable) | 2 | `tests/test_camera.cpp` |
 | `projection_frame_from_view` / `ewa_rotation_from_view` (`renderer/`) | view → EWA projection frame (y-down, +z fwd) | 2 | `tests/test_covariance.cpp`, `tests/test_ewa_frame.cpp` |

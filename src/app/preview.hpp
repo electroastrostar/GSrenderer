@@ -3,6 +3,8 @@
 #include "loader/splat_data.hpp"
 #include "renderer/splat_renderer.hpp"
 
+#include <string>
+
 // Interactive debug preview (Phase 2): GLFW window fed by the CUDA renderer through a
 // GL pixel-buffer-object interop path (no CPU round-trip). Free-fly camera:
 //   WASD move, Q/E down/up, right-mouse drag to look, Shift = 5x speed, Esc quits.
@@ -20,6 +22,13 @@ struct PreviewOptions {
   // world_from_asset flip so it appears upright (same default as SuperSplat).
   // --no-flip disables this for assets exported already y-up.
   bool flip_scene = true;
+
+  // Tracked-camera mode (Phase 3): >= 0 listens for FreeD D1 on this UDP port and the
+  // tracker drives the camera (fly controls stay active until the first packet).
+  int freed_port = -1;
+  float latency_ms = 0.0f;        // prediction offset: predict(now + latency)
+  std::string lens_csv;           // zoom->focal table; empty = fixed FOV intrinsics
+  float sensor_height_mm = 24.0f; // sensor height matching the lens table's focal values
 };
 
 // Blocks until the window closes. Returns process exit code (0 = clean run).

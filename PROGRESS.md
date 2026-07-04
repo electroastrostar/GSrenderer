@@ -1,74 +1,88 @@
 # Progress
 
-Tracking file per SPLATCAST_PLAN.md §7.1. Current phase: **Phase 2 — Core Renderer,
-static camera** (branch `claude/phase-0-scaffolding-qf5mw4`, restarted from `main` after
-the Phase 1 PR #2 merged — session tooling pins the branch name; PR title carries the phase).
+Tracking file per SPLATCAST_PLAN.md §7.1. Current phase: **Phase 3 — FreeD Tracking
+Ingest + Pose Filtering** (branch `claude/phase-0-scaffolding-qf5mw4`, restarted from
+`main` after Phase 2 PR #3 merged — session tooling pins the branch name).
 
-**Phase 2 development constraint:** authored in a container with no GPU. CUDA toolkit 12.0
-was installed in-container, so all CUDA/GLFW code is COMPILE-verified (nvcc arch 86, zero
-warnings) — but never EXECUTED. Kernel correctness/perf is validated on the A6000 via the
-hidden "[gpu]" tests + visual check during operator verification.
+**Phase 3 testing constraint (operator):** no StarTracker access (not at the studio).
+All acceptance runs against `tools/freed_simulator` (plan Task 3) — desk-testable by
+design. Bonus path: the iOS app "VirtualProductionCamera" emits standard FreeD D1 over
+UDP and can act as a handheld tracker against the same listener port.
 
 ## Done
 
-- **Phase 0 — complete.** Merged in PR #1 (scaffolding, logging, tests).
-- **Phase 1 — complete.** Merged in PR #2 (PLY loader w/ full SH, SoA buffers,
-  asset_inspector). Stretch task (.spz/.splat) deferred.
+- **Phase 0 — complete.** PR #1 (scaffolding, logging, tests).
+- **Phase 1 — complete.** PR #2 (PLY loader w/ full SH, SoA, asset_inspector).
+- **Phase 2 — complete.** PR #3 (CUDA rasterizer, preview + interop, fly camera, HUD;
+  operator-verified on a 3080 laptop incl. 3 feedback iterations: robust framing,
+  world_from_asset flip, opacity-aware/exact-overlap binning).
 
-- Phase 2, groundwork — GLM math dependency (ADR 0001); `gsr::core` camera model
-  (view_from_world, off-axis-capable clip_from_view from pixel intrinsics) with 9
-  hand-checked unit tests. 28/28 tests green.
+- Phase 3, Task 1 — FreeD D1 codec (`src/tracking/freed.*`): parse/serialize/checksum,
+  wire→internal unit conversion at the boundary; `docs/freed-protocol.md`; 5 tests incl.
+  hand-built byte fixture, round-trip, malformed rejection, clamping. 58/58 green.
 
-- Phase 2, Task 2 — SH evaluation degrees 0–3 (`src/renderer/sh.hpp`, host/device-shared)
-  with 6 hand-computed CPU tests incl. channel-major layout + view-dependence property.
+- Phase 3, Task 2 — UDP listener (`src/tracking/udp_listener.*`): Winsock/POSIX socket
+  wrapper, background receive thread, stats (ok/rejected/rate), latest-pose mailbox +
+  callback, UdpSender for simulator/tests; 3 loopback tests. 61/61 green.
 
-- Phase 2, Task 1a — covariance math (`src/renderer/covariance.hpp`): quat+scale → 3D
-  covariance, EWA 2D projection, conic+radius, named view→projection-frame adapter; 8
-  hand-checked CPU tests. 42/42 green.
+- Phase 3, Task 3 — `tools/freed_simulator`: static/orbit/handheld profiles (layered-
+  sinusoid handheld jitter), --port/--rate/--radius/--height/--period/--duration; paced
+  send loop. Smoke-tested against an independent python checksum validator (60/60 ok).
 
-- Phase 2, Task 1b — CUDA pipeline (`splat_renderer.cu`): preprocess (cull+project+SH) →
-  tile binning → CUB radix sort → front-to-back blend; per-stage cudaEvent timings;
-  grow-only device buffers; hot path returns nullptr + logs (no exceptions).
-- Phase 2, Tasks 3+4 — GLFW preview with CUDA→GL PBO interop, WASD/mouse fly camera,
-  window-title HUD + 1 Hz frame-stamped timing log; CLI flags (--width/--height/--fov/
-  --sh-clamp/--vsync). Hidden "[.gpu]" integration tests for the A6000.
+- Phase 3, Task 4 — pose predictor (`src/tracking/pose_predictor.*`): timestamped ring
+  buffer, linear extrapolation with angle unwrapping (±180° pan crossings), stale-data
+  freeze horizon; latency offset applied at the query site. 7 hand-computed tests
+  incl. the "latency offset shifts the prediction" acceptance property. 68/68 green.
 
-- Phase 2 wrap-up — `docs/verification/phase-2.md` written (first-GPU-run warning, [gpu]
-  tests, SuperSplat visual match, perf gate w/ HUD numbers). Fresh out-of-tree host build:
-  0 warnings, 44/44 tests. CUDA side compile-verified (arch 86, 0 warnings), NOT executed.
+- Phase 3, Task 5 — lens model (`src/tracking/lens_table.*`): interpolated CSV
+  zoom→focal table (header/comment tolerant, clamped ends), fixed-focal fallback,
+  focal_px_from_mm; `configs/example_lens.csv`; 6 tests. 74/74 green.
 
-- Phase 2, PR #3 iteration 1 — operator report: real scene spawns "infinitely far",
-  WASD ineffective (fixture OK). Cause: raw bounds inflated by SfM outlier splats +
-  fixed 2 m/s speed in arbitrary-scale scenes. Fix: compute_robust_bounds (percentile,
-  tested), camera framing + fly speed derived from robust radius, scroll-wheel speed
-  control with `spd` HUD readout. 46/46 tests, CUDA build clean.
+- Phase 3, Task 6 — `render_from_freed` in core/transforms: freed X→−Z, Y→−X, Z→+Y,
+  pan/tilt/roll per freed-protocol.md; 3 hand-checked fixture groups + simulator-orbit
+  "faces the origin" consistency test; architecture.md table + inventory updated.
+  77/77 green.
 
-- Phase 2, PR #3 iteration 2 — operator report: scene renders upside down (framing now
-  OK). Cause: COLMAP assets are y-down vs our y-up render world; fixture was symmetric so
-  invisible in §5a. Fix per convention rules: named `world_from_asset`/`asset_from_world`
-  (180° about X, involution) in core/transforms with hand-checked tests; preview composes
-  view_from_asset + SH camera position in asset space; `--no-flip` escape hatch;
-  architecture.md coordinate table + transform inventory updated. 49/49 tests.
+- Phase 3, integration — tracked-camera preview: `--freed-port`/`--latency-ms`/
+  `--lens-file`/`--sensor-height-mm`; listener → predictor → render_from_freed →
+  renderer; per-frame zoom→focal intrinsics when a lens table is loaded; fly controls
+  remain until first packet; HUD/log gain `trk <rate>Hz ok:<n> rej:<n>`. Host + CUDA
+  builds clean, 77/77.
 
-- Phase 2, PR #3 iteration 3 — perf: operator measured 49.3 fps @1080p on a laptop 3080
-  (advisory; A6000 projection ~85-90 fps, gate likely met) with 9.8M pairs. Landed the
-  approved binning optimization: opacity-aware alpha-cutoff extents (cull < 1/255) +
-  exact tile/ellipse overlap test shared by count & emission loops (offsets-parity guard
-  test). Deep perf work (plan §6.3) deferred until an A6000 measurement fails the gate.
-  53/53 tests, CUDA build clean.
+- Phase 3 wrap-up — `docs/verification/phase-3.md` written (all steps simulator-driven,
+  two-terminal walkthrough, optional iOS VirtualProductionCamera section, not a merge
+  gate). Fresh out-of-tree build: 0 warnings, 77/77 tests. PR opened.
+
+- Phase 3, PR #4 iteration 1 — operator hit MSVC build errors: preview.hpp used
+  std::string without <string> (GCC transitive include masked it); the §3 "unknown
+  option --freed-port" was the stale Phase 2 exe after that build failure. Fix:
+  <string> in preview.hpp + <memory> (make_unique) in preview.cpp. 77/77 both builds.
+
+- Phase 3, PR #4 iteration 2 — operator report on §3: (a) orbit veers off-axis after a
+  while — serialize CLAMPED angles at the int24 ±256° wire limit while the simulator's
+  orbit pan grows unboundedly, freezing rotation as position kept moving; fix: angles
+  now WRAP into [-180,180) at serialize (positions still clamp) + wrap round-trip tests.
+  (b) no manual control after stopping the simulator — predictor's stale freeze holds
+  forever; fix: preview treats tracking >0.5 s without packets as gone and hands the
+  fly camera the last tracked pose (position + derived yaw/pitch). 78/78 both builds.
+
+- Phase 3, PR #4 iteration 3 — operator feedback: §4 latency test was unjudgeable
+  (compare-against-memory while the scene keeps orbiting). Fix: latency offset is now
+  live-adjustable in the preview ([ / ] keys, 50 ms steps, logged) and the HUD shows
+  `lat <ms> lead <deg>` — the measured pan lead of the predicted pose vs the newest
+  raw packet. §4 rewritten as a self-referenced 3-check procedure (jump per press,
+  lead ≈ 1.5°/50 ms at the 12 s orbit, returns to 0). Also previews the Phase 7
+  set-latency-offset control. 78/78 both builds.
+
+- Phase 3, PR #4 iteration 4 — operator's §4 numbers were perfectly diagnostic: lead
+  magnitude correct but capped at 200 ms / −6.0° with no camera shift beyond. Cause:
+  the predictor's fixed 200 ms anti-dropout extrapolation horizon also clamped
+  legitimate latency offsets. Fix: set_max_extrapolation_us() + preview keeps horizon
+  = latency + 100 ms slack (startup + every [ ] change); regression test. Doc sign
+  expectations corrected (default orbit pan decreases → lead is negative; magnitude is
+  the check; the −0.2…−0.5° idle band at 0 ms is the packet-age cover, i.e. correct).
+  79/79 both builds.
 
 ## In Progress
 
-- (Phase 2 PR #3 awaiting operator perf re-test of §6, then merge → Phase 3.)
-
-## Next
-
-- Phase 2, Task 1b — CUDA pipeline (`src/renderer/`): preprocess (cull + project) →
-  16×16 tile binning → CUB radix sort on [tile|depth] keys → front-to-back blend kernel.
-- Phase 2, Task 3 — GLFW preview window + CUDA→GL interop (PBO), free-fly WASD camera.
-  Built only when CUDA is detected (preview needs the GPU anyway).
-- Phase 2, Task 4 — frame timing: CUDA-event ms per stage (cull/sort/blend), window-title
-  HUD + once-per-second frame-stamped log line.
-- Phase 2, Task 5 — perf gate on A6000 with a 3–6M splat asset (operator step).
-- Phase 2 acceptance — visual match vs SuperSplat/SIBR on same asset; ≥60 fps @1080p/3M
-  on A6000; SH view-dependence visible on orbit. `docs/verification/phase-2.md` + PR.
+- (Phase 3 PR #4 awaiting operator re-verification of §4, then §5 → merge.)
