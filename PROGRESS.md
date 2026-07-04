@@ -74,6 +74,15 @@ UDP and can act as a handheld tracker against the same listener port.
   lead ≈ 1.5°/50 ms at the 12 s orbit, returns to 0). Also previews the Phase 7
   set-latency-offset control. 78/78 both builds.
 
+- Phase 3, PR #4 iteration 4 — operator's §4 numbers were perfectly diagnostic: lead
+  magnitude correct but capped at 200 ms / −6.0° with no camera shift beyond. Cause:
+  the predictor's fixed 200 ms anti-dropout extrapolation horizon also clamped
+  legitimate latency offsets. Fix: set_max_extrapolation_us() + preview keeps horizon
+  = latency + 100 ms slack (startup + every [ ] change); regression test. Doc sign
+  expectations corrected (default orbit pan decreases → lead is negative; magnitude is
+  the check; the −0.2…−0.5° idle band at 0 ms is the packet-age cover, i.e. correct).
+  79/79 both builds.
+
 ## In Progress
 
-- (Phase 3 PR #4 awaiting operator re-verification of §3–§5, then merge.)
+- (Phase 3 PR #4 awaiting operator re-verification of §4, then §5 → merge.)

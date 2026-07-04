@@ -86,6 +86,19 @@ TEST_CASE("prediction freezes past the extrapolation horizon (stale tracking)",
   CHECK(way_beyond == Approx(at_horizon).epsilon(1e-4));  // frozen, not flying off
 }
 
+// PR #4 regression: a latency offset above the horizon silently capped out. Raising the
+// horizon at runtime must unlock the full extrapolation distance.
+TEST_CASE("set_max_extrapolation_us unlocks offsets beyond the default horizon",
+          "[tracking][predict]") {
+  trk::PosePredictor predictor(256, 200'000);
+  predictor.push(sample(0, 0.0f));
+  predictor.push(sample(100'000, 1.0f));  // 10 m/s
+
+  CHECK(predictor.predict(500'000)->x_m == Approx(3.0f).epsilon(1e-4));  // capped @200ms
+  predictor.set_max_extrapolation_us(500'000);
+  CHECK(predictor.predict(500'000)->x_m == Approx(5.0f).epsilon(1e-4));  // full 400ms
+}
+
 TEST_CASE("zoom/focus pass through from the newest sample", "[tracking][predict]") {
   trk::PosePredictor predictor;
   predictor.push(sample(0, 0.0f));

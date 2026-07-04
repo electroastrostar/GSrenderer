@@ -26,6 +26,12 @@ class PosePredictor {
 
   void push(const TimedPose& sample);
 
+  // Adjust the extrapolation horizon at runtime. Callers using a latency offset MUST
+  // keep the horizon >= offset + jitter slack, or the offset silently caps out (PR #4:
+  // a 200 ms default horizon froze every latency setting above 200 ms). The preview
+  // sets this to latency + 100 ms whenever the offset changes.
+  void set_max_extrapolation_us(std::uint64_t max_extrapolation_us);
+
   // Pose at monotonic time t_query_us. Angles are unwrapped before differencing so a
   // pan crossing ±180° extrapolates smoothly. zoom/focus pass through from the newest
   // sample (raw encoder counts don't extrapolate meaningfully). nullopt until the

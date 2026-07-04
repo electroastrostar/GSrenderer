@@ -29,6 +29,11 @@ float extrapolate_linear(float v0, float v1, float scale) { return v1 + (v1 - v0
 PosePredictor::PosePredictor(std::size_t capacity, std::uint64_t max_extrapolation_us)
     : ring_(capacity > 2 ? capacity : 2), max_extrapolation_us_(max_extrapolation_us) {}
 
+void PosePredictor::set_max_extrapolation_us(std::uint64_t max_extrapolation_us) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  max_extrapolation_us_ = max_extrapolation_us;
+}
+
 void PosePredictor::push(const TimedPose& sample) {
   std::lock_guard<std::mutex> lock(mutex_);
   ring_[head_] = sample;

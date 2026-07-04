@@ -47,7 +47,7 @@ ctest --test-dir build -C Release --output-on-failure
 ctest --test-dir build --output-on-failure
 ```
 
-✅ **PASS:** `100% tests passed, 0 tests failed out of 78` (25 new: FreeD packet codec
+✅ **PASS:** `100% tests passed, 0 tests failed out of 79` (26 new: FreeD packet codec
 byte fixtures, UDP loopback, pose prediction, lens table, `render_from_freed`).
 
 ## 3. Tracked orbit — the main acceptance check
@@ -102,9 +102,10 @@ No restart needed — the offset is **live-adjustable** so you compare against w
 looking at, not against memory. With the §3 orbit still running and the renderer window
 focused:
 
-1. Watch the title bar: it shows `lat 0ms lead +0.0deg`. The `lead` number is the
-   renderer's own measurement of how far the predicted pose runs ahead of the newest
-   raw packet.
+1. Watch the title bar: it shows `lat 0ms` with `lead` hovering around **−0.2…−0.5deg**
+   — that small value is real: even at zero offset the predictor covers the age of the
+   newest packet (0–20 ms at 50 Hz). The SIGN follows the orbit direction; the default
+   orbit's pan decreases, so lead is **negative** — the magnitude is what you check.
 2. Press **`]` (right bracket) eight times** — each press adds 50 ms of prediction
    (logged in the terminal too).
 3. Press **`[`** to step back down to 0.
@@ -112,9 +113,10 @@ focused:
 ✅ **PASS — all three:**
 1. Every `]` press makes the camera **visibly jump forward along the orbit**, instantly
    (and `[` jumps it back). That jump IS the latency offset shifting the pose.
-2. The `lead` readout climbs with each press — at the default 12 s orbit each 50 ms
-   step adds **~1.5°**, so 8 presses ≈ `lat 400ms lead +12.0deg` (±0.5°).
-3. Back at `lat 0ms`, `lead` returns to ~+0.0deg.
+2. The `lead` magnitude grows with each press — at the default 12 s orbit each 50 ms
+   step adds **~1.5°**, so 8 presses ≈ `lat 400ms lead -12.0deg` (±0.5°), all the way
+   up (no plateau at 200 ms — that was a fixed bug).
+3. Back at `lat 0ms`, `lead` returns to the ~−0.2…−0.5deg idle band.
 
 (`--latency-ms N` still sets the starting value — that's what a config will pin on
 stage, where real values are 10–80 ms.)
@@ -177,9 +179,9 @@ As before: open the Phase 3 PR, **click the checkboxes** in the description (fal
 `⋯ → Edit`). Paste terminal output/video for failures as PR comments. Merge when the
 required boxes (not §6) are green.
 
-- [ ] Build warning-clean; `ctest` 78/78 (§1–2)
+- [ ] Build warning-clean; `ctest` 79/79 (§1–2)
 - [ ] Simulator orbit: camera circles the cube facing it, smooth, `trk ~50 Hz`, `rej:0`;
       freeze-then-fly on simulator stop (§3)
-- [ ] `]`/`[` latency steps jump the camera along the orbit; `lead` tracks `lat`
-      (~12° at 400 ms) and returns to ~0 (§4)
+- [ ] `]`/`[` latency steps jump the camera along the orbit; `lead` magnitude tracks
+      `lat` all the way to 400 ms (~12°, no 200 ms plateau) and returns to idle (§4)
 - [ ] Handheld sway visible; lens table loads and tightens the FOV (§5)

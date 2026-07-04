@@ -158,6 +158,12 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
   std::unique_ptr<gsr::tracking::LensTable> lens;
   if (options.freed_port >= 0) {
     predictor = std::make_unique<gsr::tracking::PosePredictor>();
+    // Horizon must cover the intended latency offset plus packet jitter, or the offset
+    // silently caps out at the anti-dropout default (PR #4).
+    predictor->set_max_extrapolation_us(
+        static_cast<std::uint64_t>(options.latency_ms > 0 ? options.latency_ms : 0) *
+            1000 +
+        100'000);
     listener = std::make_unique<gsr::tracking::FreedListener>(
         static_cast<std::uint16_t>(options.freed_port),
         [p = predictor.get()](const gsr::tracking::TimedPose& pose) { p->push(pose); });
@@ -257,6 +263,8 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
       if (rb && !bracket_right_was) latency_ms = std::min(2000.0f, latency_ms + 50.0f);
       if (lb && !bracket_left_was) latency_ms = std::max(0.0f, latency_ms - 50.0f);
       if (latency_ms != before) {
+        predictor->set_max_extrapolation_us(
+            static_cast<std::uint64_t>(latency_ms) * 1000 + 100'000);
         log->info("prediction latency offset -> {:.0f} ms", latency_ms);
       }
       bracket_left_was = lb;
