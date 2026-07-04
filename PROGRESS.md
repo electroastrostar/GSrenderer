@@ -28,12 +28,20 @@ plus renderer-only pixel checks (overscan crop measurement) that don't.
   size, base = exact center crop; lens fy still maps to base height) and applies
   world_from_stage to tracked poses. 86/86 both builds.
 
+- Phase 4, Task 3 + fiducial — [gpu] SH-origin proof (identical view matrix, moved
+  camera_position_world: silhouette identical, colors differ) and grid_fiducial.ply
+  (4×4 m wall, colored corners, pinned by loader test). 87/87 both builds.
+
+- Phase 4 wrap-up — architecture.md §5 inner-frustum contract (Mode A/B, stage
+  alignment) + transform inventory rows; `docs/verification/phase-4.md` (fiducial
+  sanity, overscan pixel measurement with exact crop numbers, stage-alignment check,
+  optional UE5 line-up section — not a merge gate). Fresh out-of-tree build: 0
+  warnings, 87/87.
+
 ## In Progress
 
-- **Phase 4, Task 3 + fiducial** — [gpu] SH-origin test (same view matrix, different
-  camera_position_world → colors change) and `tools/make_fiducial_ply.py` → committed
-  grid fiducial asset for line-up/overscan measurement.
-  - Exact next step: implement both; commit.
+- (nothing — Phase 4 complete; awaiting operator verification per
+  `docs/verification/phase-4.md`, then merge → Phase 5 NDI output.)
 
 ## Next
 
