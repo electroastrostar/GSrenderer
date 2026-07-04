@@ -29,3 +29,19 @@ TEST_CASE("committed cube_deg3 fixture loads with known values", "[loader][fixtu
     CHECK(data.sh_rest[45 * i] == Catch::Approx(0.1f * i));   // f_rest_0 per splat
   }
 }
+
+// Phase 4 fiducial: pins the committed grid asset to its generator's values (regenerate
+// with tools/make_fiducial_ply.py). The verification doc's pixel measurements assume
+// exactly this geometry.
+TEST_CASE("committed grid_fiducial fixture loads with known values", "[loader][fixture]") {
+  const auto data = gsr::loader::load_ply(GSR_TEST_ASSETS_DIR "/fixtures/grid_fiducial.ply");
+  REQUIRE(data.count == 1463);
+  CHECK(data.sh_degree == 0);
+  const auto b = gsr::loader::compute_bounds(data);
+  CHECK(b.min[0] == Catch::Approx(-2.0f));
+  CHECK(b.max[0] == Catch::Approx(2.0f));
+  CHECK(b.min[2] == Catch::Approx(0.0f).margin(1e-6));  // flat wall at asset z=0
+  CHECK(b.max[2] == Catch::Approx(0.0f).margin(1e-6));
+  // Opaque grid: every opacity ~sigmoid(6).
+  CHECK(data.opacity[0] == Catch::Approx(0.9975274f).epsilon(1e-4));
+}

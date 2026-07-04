@@ -88,3 +88,41 @@ TEST_CASE("GPU: view-dependent color changes across opposite viewpoints (SH)", "
   }
   CHECK(diff > 0);
 }
+
+// Phase 4 task 3 (explicit SH-origin test): CameraFrame carries the view matrix and the
+// physical camera position as SEPARATE fields. Rendering with an identical view matrix
+// but a different camera_position_world must change colors (the SH view direction) while
+// geometry stays put — proving SH evaluation uses the physical camera position, not
+// anything derived from the projection.
+TEST_CASE("GPU: SH uses the physical camera position field, not the view matrix",
+          "[.gpu]") {
+  const auto data = gsr::loader::load_ply(GSR_TEST_ASSETS_DIR "/fixtures/cube_deg3.ply");
+  gsr::renderer::RenderConfig config;
+  config.width = 320;
+  config.height = 180;
+  gsr::renderer::SplatRenderer renderer(data, config);
+  const auto intr = gsr::core::intrinsics_from_fov(glm::radians(60.0f), config.width,
+                                                   config.height, 0.1f, 100.0f);
+
+  auto frame = frame_at({0, 0, 6}, glm::quat(1, 0, 0, 0), intr);
+  std::vector<gsr::renderer::Rgba8> a(static_cast<size_t>(config.width) * config.height);
+  std::vector<gsr::renderer::Rgba8> b(a.size());
+
+  REQUIRE(renderer.render_device(frame, nullptr) != nullptr);
+  REQUIRE(renderer.read_back(a.data()));
+
+  frame.camera_position_world = {0, 0, -6};  // view matrix UNCHANGED
+  REQUIRE(renderer.render_device(frame, nullptr) != nullptr);
+  REQUIRE(renderer.read_back(b.data()));
+
+  long color_diff = 0;
+  bool coverage_identical = true;
+  for (size_t i = 0; i < a.size(); ++i) {
+    if ((a[i].a > 0) != (b[i].a > 0)) coverage_identical = false;
+    if (a[i].a > 0 && b[i].a > 0) {
+      color_diff += std::abs(int(a[i].r) - int(b[i].r)) + std::abs(int(a[i].g) - int(b[i].g));
+    }
+  }
+  CHECK(coverage_identical);  // same projection -> same silhouette
+  CHECK(color_diff > 0);      // different SH origin -> different colors
+}
