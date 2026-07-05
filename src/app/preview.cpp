@@ -141,15 +141,25 @@ void handle_input(GLFWwindow* window, FlyCamera& cam, float dt, double* last_x,
 int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
   auto log = gsr::log::get("preview");
 
+  // Mode B overscan expands the render target; the base (lens) image is the exact
+  // center crop of what we render/output.
+  const float fov = options.fov_y_rad > 0.0f ? options.fov_y_rad : glm::radians(60.0f);
+  const auto base_intr = gsr::core::with_overscan(
+      gsr::core::intrinsics_from_fov(fov, options.width, options.height, 0.1f, 1000.0f),
+      options.overscan_fraction);
+  const int out_width = base_intr.width;
+  const int out_height = base_intr.height;
+
   gsr::renderer::RenderConfig config;
-  config.width = options.width;
-  config.height = options.height;
+  config.width = out_width;
+  config.height = out_height;
   config.sh_degree_clamp = options.sh_degree_clamp;
   gsr::renderer::SplatRenderer renderer(data, config);
-
-  const float fov = options.fov_y_rad > 0.0f ? options.fov_y_rad : glm::radians(60.0f);
-  const auto base_intr =
-      gsr::core::intrinsics_from_fov(fov, options.width, options.height, 0.1f, 1000.0f);
+  if (options.overscan_fraction > 0.0f) {
+    log->info("overscan {:.1f}%: rendering {}x{} (base {}x{} is the center crop)",
+              options.overscan_fraction * 100.0f, out_width, out_height, options.width,
+              options.height);
+  }
 
   // Tracked-camera mode: listener feeds the predictor; the render loop queries
   // predict(now + latency) and converts through render_from_freed.
@@ -181,7 +191,7 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
   if (glfwInit() != GLFW_TRUE) throw std::runtime_error("preview: glfwInit failed");
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);  // fixed-size render target this phase
   GLFWwindow* window =
-      glfwCreateWindow(options.width, options.height, "splatcast", nullptr, nullptr);
+      glfwCreateWindow(out_width, out_height, "splatcast", nullptr, nullptr);
   if (window == nullptr) {
     glfwTerminate();
     throw std::runtime_error("preview: window creation failed (GL context)");
@@ -194,13 +204,13 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
 
   // Texture + PBO + CUDA registration (the interop triangle).
   const size_t frame_bytes =
-      static_cast<size_t>(options.width) * options.height * sizeof(gsr::renderer::Rgba8);
+      static_cast<size_t>(out_width) * out_height * sizeof(gsr::renderer::Rgba8);
   GLuint texture = 0;
   glGenTextures(1, &texture);
   glBindTexture(GL_TEXTURE_2D, texture);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, options.width, options.height, 0, GL_RGBA,
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, out_width, out_height, 0, GL_RGBA,
                GL_UNSIGNED_BYTE, nullptr);
 
   GLuint pbo = 0;
@@ -228,7 +238,7 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
   double last_x = 0.0, last_y = 0.0;
   glfwGetCursorPos(window, &last_x, &last_y);
 
-  log->info("preview: {}x{}, fov {:.1f} deg, vsync {}", options.width, options.height,
+  log->info("preview: {}x{}, fov {:.1f} deg, vsync {}", out_width, out_height,
             glm::degrees(fov), options.vsync ? "on" : "off");
   log->info("controls: WASD move, Q/E down/up, right-drag look, SCROLL speed, Shift fast, "
             "Esc quit (fly speed {:.2f} units/s)",
@@ -292,9 +302,11 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
       if (fresh) {
         if (const auto predicted = predictor->predict(
                 now_us + static_cast<std::uint64_t>(latency_us > 0 ? latency_us : 0))) {
-          pose = gsr::core::render_from_freed(predicted->pan_rad, predicted->tilt_rad,
-                                              predicted->roll_rad, predicted->x_m,
-                                              predicted->y_m, predicted->z_m);
+          pose = gsr::core::world_from_stage(
+            gsr::core::render_from_freed(predicted->pan_rad, predicted->tilt_rad,
+                                         predicted->roll_rad, predicted->x_m,
+                                         predicted->y_m, predicted->z_m),
+            options.stage_yaw_rad, options.stage_offset);
           if (lens) {
             const float fy = gsr::tracking::focal_px_from_mm(
                 lens->focal_mm(predicted->zoom_raw), options.sensor_height_mm,
@@ -363,7 +375,7 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
 
     gl.bind(GL_PIXEL_UNPACK_BUFFER, pbo);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, options.width, options.height, GL_RGBA,
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, out_width, out_height, GL_RGBA,
                     GL_UNSIGNED_BYTE, nullptr);
     gl.bind(GL_PIXEL_UNPACK_BUFFER, 0);
 

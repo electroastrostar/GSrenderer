@@ -27,6 +27,20 @@ Intrinsics intrinsics_from_fov(float fov_y_rad, int width, int height, float zne
   return intr;
 }
 
+Intrinsics with_overscan(const Intrinsics& intr, float fraction) {
+  if (fraction < 0.0f) {
+    throw std::invalid_argument("with_overscan: fraction must be >= 0");
+  }
+  const int pad_x = static_cast<int>(std::lround(0.5f * fraction * intr.width));
+  const int pad_y = static_cast<int>(std::lround(0.5f * fraction * intr.height));
+  Intrinsics out = intr;
+  out.width = intr.width + 2 * pad_x;
+  out.height = intr.height + 2 * pad_y;
+  out.cx = intr.cx + static_cast<float>(pad_x);
+  out.cy = intr.cy + static_cast<float>(pad_y);
+  return out;
+}
+
 glm::mat4 view_from_world(const CameraPose& pose) {
   const glm::mat3 r_transpose = glm::transpose(glm::mat3_cast(pose.orientation));
   glm::mat4 view(r_transpose);

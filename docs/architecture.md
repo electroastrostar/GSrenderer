@@ -59,6 +59,8 @@ hand-checked unit test (see `CLAUDE.md`):
 |---|---|---|---|
 | `world_from_asset` / `asset_from_world` (`core/transforms.hpp`) | splat asset ↔ render world (180° about X; SuperSplat-compatible default, `--no-flip` to disable) | 2 | `tests/test_transforms.cpp` |
 | `render_from_freed` (`core/transforms.hpp`) | FreeD/StarTracker → render-world camera pose (freed X→−Z, Y→−X, Z→+Y; pan/tilt/roll per `freed-protocol.md`) | 3 | `tests/test_transforms.cpp` (incl. simulator-orbit consistency) |
+| `world_from_stage` (`core/transforms.hpp`) | stage (tracked pose) → render world (yaw about up + offset; `[stage]` config) | 4 | `tests/test_transforms.cpp` |
+| `with_overscan` (`core/camera.hpp`) | base intrinsics → overscanned intrinsics (exact-center-crop contract) | 4 | `tests/test_camera.cpp` |
 | `view_from_world` (`core/camera.hpp`) | render world → camera view | 2 | `tests/test_camera.cpp` |
 | `clip_from_view` (`core/camera.hpp`) | camera view → clip (off-axis capable) | 2 | `tests/test_camera.cpp` |
 | `projection_frame_from_view` / `ewa_rotation_from_view` (`renderer/`) | view → EWA projection frame (y-down, +z fwd) | 2 | `tests/test_covariance.cpp`, `tests/test_ewa_frame.cpp` |
@@ -79,7 +81,20 @@ hand-checked unit test (see `CLAUDE.md`):
   available, SDP generation. *(TBD Phase 6)*
 - **app/** — main loop, TOML config, CLI, headless/preview modes.
 
-## 5. Timing Model *(TBD — Phase 5/6)*
+## 5. Inner-Frustum Output Contract (Phase 4)
+
+- **Mode A (default):** the output frame is exactly "what the physical camera lens sees"
+  of the splat scene — perspective from the tracked pose with lens-matched intrinsics
+  (lens table or fixed FOV). nDisplay owns placement/warp of this texture.
+- **Mode B (overscan):** `with_overscan(intrinsics, fraction)` pads the frame on all
+  sides while keeping every world ray fixed; the Mode A image is the exact center crop.
+  Set via `[output] overscan_pct` / `--overscan`. Matches nDisplay inner-frustum
+  overscan so soft-mask/reprojection headroom exists at the edges.
+- **Stage alignment:** tracked poses pass through `world_from_stage` (yaw about up +
+  offset; `[stage]` config) to align the tracker origin with the scene/UE origin.
+- SH is always evaluated from the physical camera position (GPU test pins this).
+
+## 5b. Timing Model *(TBD — Phase 5/6)*
 
 - Monotonic clock (`t_mono_us`) is the process-wide timebase; all log records carry it.
 - Frame counter advances once per render-loop iteration.

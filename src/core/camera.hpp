@@ -22,6 +22,13 @@ struct Intrinsics {
 Intrinsics intrinsics_from_fov(float fov_y_rad, int width, int height, float znear,
                                float zfar);
 
+// Mode B overscan (plan §Phase 4): pads the image on all sides by `fraction` of the base
+// size (0.10 = 10%) while keeping fx/fy and every world ray fixed — the base image is the
+// EXACT center crop of the overscanned one (a ray hitting base pixel (u,v) hits overscan
+// pixel (u+pad_x, v+pad_y)). This is the nDisplay inner-frustum overscan contract.
+// fraction == 0 returns the input unchanged; negative fractions throw.
+Intrinsics with_overscan(const Intrinsics& intr, float fraction);
+
 struct CameraPose {
   glm::vec3 position{0.0f};                        // world, meters
   glm::quat orientation{1.0f, 0.0f, 0.0f, 0.0f};   // rotates camera-space vectors to world
