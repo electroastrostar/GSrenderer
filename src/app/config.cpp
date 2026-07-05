@@ -52,6 +52,10 @@ void apply_config_file(const std::string& path, RunConfig* config) {
   get(lens, "file", &config->lens_file);
   get(lens, "sensor_height_mm", &config->sensor_height_mm);
 
+  const auto* ndi = table["ndi"].as_table();
+  get(ndi, "name", &config->ndi_name);
+  get(ndi, "fps", &config->ndi_fps);
+
   const auto* stage = table["stage"].as_table();
   get(stage, "yaw_deg", &config->stage_yaw_deg);
   if (stage != nullptr) {

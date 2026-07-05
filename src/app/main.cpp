@@ -31,6 +31,8 @@ void print_usage() {
       "  --latency-ms F  tracking prediction offset ([ / ] adjust live)\n"
       "  --lens-file P   zoom->focal CSV (configs/example_lens.csv)\n"
       "  --sensor-height-mm F      sensor height for the lens table (default 24)\n"
+      "  --ndi NAME      stream frames as this NDI source (requires the NDI SDK)\n"
+      "  --fps F         NDI target frame rate 24/25/30 (default 30)\n"
       "  --stage-yaw-deg F         stage alignment yaw about up, +CCW from above\n"
       "  --stage-offset X,Y,Z      stage alignment offset, meters\n");
 }
@@ -64,6 +66,8 @@ bool parse_cli(int argc, char** argv, gsr::app::RunConfig* cfg) {
     else if (std::strcmp(argv[i], "--latency-ms") == 0 && (v = value("--latency-ms"))) cfg->latency_ms = std::stof(v);
     else if (std::strcmp(argv[i], "--lens-file") == 0 && (v = value("--lens-file"))) cfg->lens_file = v;
     else if (std::strcmp(argv[i], "--sensor-height-mm") == 0 && (v = value("--sensor-height-mm"))) cfg->sensor_height_mm = std::stof(v);
+    else if (std::strcmp(argv[i], "--ndi") == 0 && (v = value("--ndi"))) cfg->ndi_name = v;
+    else if (std::strcmp(argv[i], "--fps") == 0 && (v = value("--fps"))) cfg->ndi_fps = std::stof(v);
     else if (std::strcmp(argv[i], "--stage-yaw-deg") == 0 && (v = value("--stage-yaw-deg"))) cfg->stage_yaw_deg = std::stof(v);
     else if (std::strcmp(argv[i], "--stage-offset") == 0 && (v = value("--stage-offset"))) {
       if (std::sscanf(v, "%f,%f,%f", &cfg->stage_offset_m[0], &cfg->stage_offset_m[1],
@@ -118,6 +122,8 @@ int main(int argc, char** argv) {
     options.lens_csv = cfg.lens_file;
     options.sensor_height_mm = cfg.sensor_height_mm;
     options.overscan_fraction = cfg.overscan_pct / 100.0f;
+    options.ndi_name = cfg.ndi_name;
+    options.ndi_fps = cfg.ndi_fps;
     options.stage_yaw_rad = glm::radians(cfg.stage_yaw_deg);
     options.stage_offset = {cfg.stage_offset_m[0], cfg.stage_offset_m[1],
                             cfg.stage_offset_m[2]};

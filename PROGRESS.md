@@ -17,20 +17,22 @@ operator's second machine.
 - **Phases 0–4 complete.** PRs #1–#5 merged after operator verification. Phase 4 §6
   (UE5 line-up) pending a UE machine — not a merge gate.
 
+- Phase 5, Task 3 — frame pacer (slot grid, no 24fps drift, late frames skip slots);
+  fake-clock tests.
+- Phase 5, Task 2 — AsyncReadback (`src/renderer/readback.cu`): 3 pinned slots,
+  cudaMemcpyAsync on a non-blocking stream, event-timed readback ms, ring-full drops
+  counted.
+- Phase 5, Task 1 — NDI sender: SDK detected like CUDA (NDI_SDK_DIR/defaults), honest
+  compile-check stub (`third_party/ndi_stub`, initialize()=false so a stub build can
+  never pretend to stream); RGBA frames + 100ns timecode from mono_us; `--ndi NAME
+  --fps F` + `[ndi]` config; preview loop: render → flash(F) → readback.begin/acquire →
+  send → pacer sleep; HUD gains `ndi <fps> late: rb: drop:`. 91/91 host+CUDA (stub).
+
 ## In Progress
 
-- **Phase 5, Task 3 first — frame pacer** (`src/output/frame_pacer.*`): pure-logic
-  software pacer for 24/25/30 fps (next-deadline scheduling, late-frame counter,
-  jitter stats) — unit-testable with a fake clock.
-  - Exact next step: implement + tests; commit.
-
-## Next
-
-- Phase 5, Task 2 — async GPU readback (`src/renderer/readback.*`, CUDA): pinned-memory
-  triple buffer + cudaMemcpyAsync + events; measured readback ms; [gpu] test.
-- Phase 5, Task 1 — NDI sender (`src/output/ndi/`): BGRA frames + monotonic timecode;
-  SDK detection in CMake + container stub for compile checks; app `--ndi NAME` +
-  `[ndi]` config (fps, name); late-frame logging.
+- **Phase 5 docs** — `docs/ue5-ndi-setup.md` (Task 4), latency flash procedure (Task 5)
+  + `docs/verification/phase-5.md`, PR.
+  - Exact next step: write docs, acceptance build, open PR.
 - Phase 5, Task 4 — `docs/ue5-ndi-setup.md` (NDI Media plugin → Media Texture →
   nDisplay inner-frustum media input, ICVFX media sharing).
 - Phase 5, Task 5 — end-to-end latency measurement procedure (flash-frame test, F key)

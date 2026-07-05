@@ -28,6 +28,10 @@ struct RunConfig {
   std::string lens_file;
   float sensor_height_mm = 24.0f;
 
+  // [ndi] — Phase 5 output; empty name = NDI off
+  std::string ndi_name;
+  float ndi_fps = 30.0f;
+
   // [stage] — tracker origin -> scene origin alignment (world_from_stage)
   float stage_yaw_deg = 0.0f;
   float stage_offset_m[3] = {0.0f, 0.0f, 0.0f};
