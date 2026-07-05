@@ -2,6 +2,7 @@
 # from gsr_tests everywhere. The rasterizer target itself requires the CUDA toolchain.
 if(GSR_CUDA_ENABLED)
   add_library(gsr_renderer STATIC
+    readback.cu
     splat_renderer.cu
   )
 

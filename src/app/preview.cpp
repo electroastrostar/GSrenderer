@@ -4,6 +4,9 @@
 #include "core/log.hpp"
 #include "core/transforms.hpp"
 #include "loader/splat_data.hpp"
+#include "output/frame_pacer.hpp"
+#include "output/ndi/ndi_sender.hpp"
+#include "renderer/readback.hpp"
 #include "tracking/lens_table.hpp"
 #include "tracking/pose_predictor.hpp"
 #include "tracking/udp_listener.hpp"
@@ -14,12 +17,14 @@
 
 #include <glm/gtc/quaternion.hpp>
 
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 // Buffer-object entry points are post-GL1.1, so on Windows they must be resolved at
 // runtime. We need exactly four; loading them via glfwGetProcAddress avoids a loader
@@ -188,6 +193,21 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
               lens ? ", lens table" : ", fixed intrinsics");
   }
 
+  // NDI output (Phase 5): sender + async readback ring + software pacer. Construction
+  // throws without the real SDK (startup) — never a silent no-op stream.
+  std::unique_ptr<gsr::output::NdiSender> ndi;
+  std::unique_ptr<gsr::renderer::AsyncReadback> readback;
+  std::unique_ptr<gsr::output::FramePacer> pacer;
+  if (!options.ndi_name.empty()) {
+    ndi = std::make_unique<gsr::output::NdiSender>(options.ndi_name, out_width, out_height,
+                                                   options.ndi_fps);
+    readback = std::make_unique<gsr::renderer::AsyncReadback>(out_width, out_height, 3);
+    pacer = std::make_unique<gsr::output::FramePacer>(options.ndi_fps, gsr::log::mono_us());
+    log->info("NDI streaming '{}' at {:.4g} fps ({}x{}); F flashes a white frame for the "
+              "latency measurement",
+              options.ndi_name, options.ndi_fps, out_width, out_height);
+  }
+
   if (glfwInit() != GLFW_TRUE) throw std::runtime_error("preview: glfwInit failed");
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);  // fixed-size render target this phase
   GLFWwindow* window =
@@ -254,6 +274,8 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
   float latency_ms = options.latency_ms;
   float lead_deg = 0.0f;
   bool bracket_left_was = false, bracket_right_was = false;
+  bool flash_was = false, flash_pending = false;  // F key: one white frame (latency test)
+  float readback_ms = 0.0f;
   double prev_time = glfwGetTime();
   double hud_time = prev_time;
   double log_time = prev_time;
@@ -265,6 +287,11 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
     glfwPollEvents();
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
       glfwSetWindowShouldClose(window, GLFW_TRUE);
+    }
+    if (ndi) {  // F = flash one white output frame (end-to-end latency measurement)
+      const bool f_down = glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS;
+      if (f_down && !flash_was) flash_pending = true;
+      flash_was = f_down;
     }
     if (predictor) {  // [ / ] step the prediction offset by 50 ms (edge-triggered)
       const bool lb = glfwGetKey(window, GLFW_KEY_LEFT_BRACKET) == GLFW_PRESS;
@@ -360,6 +387,21 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
       break;
     }
 
+    if (flash_pending) {
+      // Overwrite this frame with solid white on-device: visible in the preview AND in
+      // the NDI stream — film both to measure end-to-end latency (verification doc).
+      cudaMemset(const_cast<gsr::renderer::Rgba8*>(device_pixels), 0xFF, frame_bytes);
+      gsr::log::get("preview")->info("FLASH frame emitted");
+      flash_pending = false;
+    }
+    if (readback) {
+      // Enqueue this frame; send the oldest completed one. 1-2 frame pipeline depth.
+      readback->begin(device_pixels);
+      if (const auto* host = readback->acquire(&readback_ms)) {
+        ndi->send_rgba(reinterpret_cast<const std::uint8_t*>(host), gsr::log::mono_us());
+      }
+    }
+
     // Device-to-device into the mapped PBO, then PBO -> texture on the GL side.
     void* mapped = nullptr;
     size_t mapped_size = 0;
@@ -390,6 +432,15 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
     glEnd();
     glfwSwapBuffers(window);
 
+    if (pacer) {  // lock the loop to the NDI rate; late frames are counted, not queued
+      const std::uint64_t deadline = pacer->next_deadline_us();
+      const std::uint64_t now_us = gsr::log::mono_us();
+      if (deadline > now_us) {
+        std::this_thread::sleep_for(std::chrono::microseconds(deadline - now_us));
+      }
+      pacer->frame_done(gsr::log::mono_us());
+    }
+
     gsr::log::advance_frame();
     ++hud_frames;
     acc.preprocess_ms += timings.preprocess_ms;
@@ -401,6 +452,13 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
     // HUD in the title 4x/s; frame-stamped log line 1x/s (plan Phase 2 task 4).
     if (now - hud_time > 0.25 && hud_frames > 0) {
       const float inv = 1.0f / static_cast<float>(hud_frames);
+      char ndi_hud[96] = "";
+      if (pacer) {
+        std::snprintf(ndi_hud, sizeof ndi_hud, " | ndi %.4g fps late:%llu rb %.2fms drop:%llu",
+                      options.ndi_fps, static_cast<unsigned long long>(pacer->frames_late()),
+                      readback_ms,
+                      static_cast<unsigned long long>(readback->frames_dropped()));
+      }
       char tracking_hud[128] = "";
       if (listener) {
         const auto ts = listener->stats();
@@ -410,20 +468,21 @@ int run_preview(const loader::SplatData& data, const PreviewOptions& options) {
                       static_cast<unsigned long long>(ts.packets_rejected), latency_ms,
                       lead_deg);
       }
-      char title[352];
+      char title[448];
       std::snprintf(title, sizeof title,
                     "splatcast — %.1f fps | cull+proj %.2f ms | sort %.2f ms | blend %.2f "
-                    "ms | GPU total %.2f ms | %u pairs | spd %.2f%s",
+                    "ms | GPU total %.2f ms | %u pairs | spd %.2f%s%s",
                     hud_frames / static_cast<float>(now - hud_time), acc.preprocess_ms * inv,
                     acc.sort_ms * inv, acc.blend_ms * inv, acc.total_ms * inv,
-                    acc.pairs_rendered, cam.base_speed * cam.speed_scale, tracking_hud);
+                    acc.pairs_rendered, cam.base_speed * cam.speed_scale, tracking_hud,
+                    ndi_hud);
       glfwSetWindowTitle(window, title);
       if (now - log_time > 1.0) {
         log->info("{:.1f} fps | preprocess {:.2f} ms | sort {:.2f} ms | blend {:.2f} ms | "
-                  "gpu {:.2f} ms | {} pairs{}",
+                  "gpu {:.2f} ms | {} pairs{}{}",
                   hud_frames / static_cast<float>(now - hud_time), acc.preprocess_ms * inv,
                   acc.sort_ms * inv, acc.blend_ms * inv, acc.total_ms * inv,
-                  acc.pairs_rendered, tracking_hud);
+                  acc.pairs_rendered, tracking_hud, ndi_hud);
         log_time = now;
       }
       hud_time = now;

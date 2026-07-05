@@ -1,55 +1,40 @@
 # Progress
 
-Tracking file per SPLATCAST_PLAN.md §7.1. Current phase: **Phase 4 — Off-Axis Frustum
-for the Volume** (branch `claude/phase-0-scaffolding-qf5mw4`, restarted from `main`
-after Phase 3 PR #4 merged).
+Tracking file per SPLATCAST_PLAN.md §7.1. Current phase: **Phase 5 — NDI Output
+(PROTOTYPE MILESTONE)** (branch `claude/phase-0-scaffolding-qf5mw4`, restarted from
+`main` after Phase 4 PR #5 merged; Phase 4 §6 UE5 line-up deferred to a UE session,
+recorded separately).
 
-**Phase 4 scoping notes:** Mode A (lens-matched perspective — "what the physical camera
-sees") is the recommended-first contract and is largely what Phases 2+3 already render;
-this phase formalizes it, adds Mode B overscan, stage-origin alignment config, the
-explicit SH-origin test, and a fiducial asset for line-up verification. The UE5
-side-by-side acceptance needs a UE5 machine — verification doc will carry a UE5 path
-plus renderer-only pixel checks (overscan crop measurement) that don't.
+**Phase 5 constraints:** the NDI SDK is proprietary (registration download) — CMake
+DETECTS it (like CUDA): real sender compiles when `NDI_SDK_DIR`/default install path has
+the SDK; a clearly-labeled header stub (`third_party/ndi_stub/`) lets the container
+compile-check the exact same sender code. Never a fake runtime pass: without the real
+SDK the app refuses `--ndi` with a clear error. The UE5-receiver acceptance needs the
+operator's second machine.
 
 ## Done
 
-- **Phases 0–3 complete.** PRs #1–#4 merged after operator verification (see git log;
-  Phase 3 closed after 4 verification iterations incl. wire-angle wrap, tracking-stale
-  handback, live latency stepping with measured lead, extrapolation-horizon fix).
+- **Phases 0–4 complete.** PRs #1–#5 merged after operator verification. Phase 4 §6
+  (UE5 line-up) pending a UE machine — not a merge gate.
 
-- Phase 4, Tasks 1+2 math — `with_overscan` (exact-center-crop contract, hand-checked
-  96/54-px fixtures + projection superset property test) and Task 4 transform —
-  `world_from_stage` (yaw about +Y then offset; hand-checked R_y(90°) fixture). 83/83.
+- Phase 5, Task 3 — frame pacer (slot grid, no 24fps drift, late frames skip slots);
+  fake-clock tests.
+- Phase 5, Task 2 — AsyncReadback (`src/renderer/readback.cu`): 3 pinned slots,
+  cudaMemcpyAsync on a non-blocking stream, event-timed readback ms, ring-full drops
+  counted.
+- Phase 5, Task 1 — NDI sender: SDK detected like CUDA (NDI_SDK_DIR/defaults), honest
+  compile-check stub (`third_party/ndi_stub`, initialize()=false so a stub build can
+  never pretend to stream); RGBA frames + 100ns timecode from mono_us; `--ndi NAME
+  --fps F` + `[ndi]` config; preview loop: render → flash(F) → readback.begin/acquire →
+  send → pacer sleep; HUD gains `ndi <fps> late: rb: drop:`. 91/91 host+CUDA (stub).
 
-- Phase 4, config + wiring — TOML run config (toml++ v3.4.0, `gsr_config` lib,
-  `configs/example_run.toml`, 4 tests: overlay/defaults/example/malformed); CLI
-  reworked: `--config` two-pass with flag overrides, `--overscan`, `--stage-yaw-deg`,
-  `--stage-offset X,Y,Z`; preview renders the overscanned target (window = overscan
-  size, base = exact center crop; lens fy still maps to base height) and applies
-  world_from_stage to tracked poses. 86/86 both builds.
-
-- Phase 4, Task 3 + fiducial — [gpu] SH-origin proof (identical view matrix, moved
-  camera_position_world: silhouette identical, colors differ) and grid_fiducial.ply
-  (4×4 m wall, colored corners, pinned by loader test). 87/87 both builds.
-
-- Phase 4 wrap-up — architecture.md §5 inner-frustum contract (Mode A/B, stage
-  alignment) + transform inventory rows; `docs/verification/phase-4.md` (fiducial
-  sanity, overscan pixel measurement with exact crop numbers, stage-alignment check,
-  optional UE5 line-up section — not a merge gate). Fresh out-of-tree build: 0
-  warnings, 87/87.
+- Phase 5, Tasks 4+5 — `docs/ue5-ndi-setup.md` (receiver plugin → media texture →
+  ICVFX camera media input, media sharing, free-running-NDI expectations per plan §6.6)
+  and the flash-frame latency procedure (F key + slow-mo phone count) in
+  `docs/verification/phase-5.md` (desk gate §1–5 with Studio Monitor; stage/UE5
+  milestone §6 recorded separately). Fresh acceptance build 0 warnings, 91/91.
 
 ## In Progress
 
-- (nothing — Phase 4 complete; awaiting operator verification per
-  `docs/verification/phase-4.md`, then merge → Phase 5 NDI output.)
-
-## Next
-
-- Phase 4, Task 3 (old) — explicit SH-origin test: identical view matrix, different
-  camera_position_world → colors change ([gpu] test; field independence proves the
-  physical-camera origin is what SH uses).
-- Phase 4, fiducial — `tools/make_fiducial_ply.py` → committed grid/checkerboard asset
-  (deg 0, small) with colored corner markers for line-up + overscan pixel measurement.
-- Phase 4 wrap-up — architecture.md Mode A/B section; `docs/verification/phase-4.md`
-  (overscan crop measurement renderer-only; UE5 line-up path for when a UE machine is
-  available); PR.
+- (nothing — Phase 5 code+docs complete; awaiting operator desk verification per
+  `docs/verification/phase-5.md`, then merge; §6 stage test = PROTOTYPE milestone.)

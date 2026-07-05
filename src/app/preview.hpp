@@ -32,6 +32,10 @@ struct PreviewOptions {
   float stage_yaw_rad = 0.0f;
   glm::vec3 stage_offset{0.0f};
 
+  // NDI output (Phase 5): non-empty name streams paced frames as this NDI source.
+  std::string ndi_name;
+  float ndi_fps = 30.0f;
+
   // Tracked-camera mode (Phase 3): >= 0 listens for FreeD D1 on this UDP port and the
   // tracker drives the camera (fly controls stay active until the first packet).
   int freed_port = -1;

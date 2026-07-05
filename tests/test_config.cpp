@@ -36,6 +36,9 @@ width = 3840
 overscan_pct = 12.5
 [tracking]
 freed_port = 8001
+[ndi]
+name = "splatcast"
+fps = 25.0
 [stage]
 yaw_deg = 90.0
 offset_m = [1.0, 0.5, -2.0]
@@ -49,6 +52,8 @@ offset_m = [1.0, 0.5, -2.0]
   CHECK(cfg.overscan_pct == Approx(12.5f));
   CHECK(cfg.freed_port == 8001);
   CHECK(cfg.latency_ms == Approx(0.0f));  // untouched default
+  CHECK(cfg.ndi_name == "splatcast");
+  CHECK(cfg.ndi_fps == Approx(25.0f));
   CHECK(cfg.stage_yaw_deg == Approx(90.0f));
   CHECK(cfg.stage_offset_m[0] == Approx(1.0f));
   CHECK(cfg.stage_offset_m[2] == Approx(-2.0f));
