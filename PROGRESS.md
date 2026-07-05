@@ -28,14 +28,13 @@ operator's second machine.
   --fps F` + `[ndi]` config; preview loop: render → flash(F) → readback.begin/acquire →
   send → pacer sleep; HUD gains `ndi <fps> late: rb: drop:`. 91/91 host+CUDA (stub).
 
+- Phase 5, Tasks 4+5 — `docs/ue5-ndi-setup.md` (receiver plugin → media texture →
+  ICVFX camera media input, media sharing, free-running-NDI expectations per plan §6.6)
+  and the flash-frame latency procedure (F key + slow-mo phone count) in
+  `docs/verification/phase-5.md` (desk gate §1–5 with Studio Monitor; stage/UE5
+  milestone §6 recorded separately). Fresh acceptance build 0 warnings, 91/91.
+
 ## In Progress
 
-- **Phase 5 docs** — `docs/ue5-ndi-setup.md` (Task 4), latency flash procedure (Task 5)
-  + `docs/verification/phase-5.md`, PR.
-  - Exact next step: write docs, acceptance build, open PR.
-- Phase 5, Task 4 — `docs/ue5-ndi-setup.md` (NDI Media plugin → Media Texture →
-  nDisplay inner-frustum media input, ICVFX media sharing).
-- Phase 5, Task 5 — end-to-end latency measurement procedure (flash-frame test, F key)
-  documented in the verification doc.
-- Phase 5 wrap-up — `docs/verification/phase-5.md` (NDI Studio Monitor desk test first,
-  then UE5 second-machine test, 30-min soak, latency procedure), PR.
+- (nothing — Phase 5 code+docs complete; awaiting operator desk verification per
+  `docs/verification/phase-5.md`, then merge; §6 stage test = PROTOTYPE milestone.)
